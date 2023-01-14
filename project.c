@@ -3,11 +3,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <windows.h>
 
 void makeDirectory(const char*);
 void getFirstWord(char*, char*);
 int getPath(char*, char*);
+int getString(char*, char*);
 int createFile(char*);
 int getFileName(char*, char*, char*);
 int mainFunction(char*);
@@ -15,8 +15,10 @@ void makeAllDirectories(char*);
 void makeFile(char*);
 int insertstr(char*);
 void writeToFile(char*, char*,int, int);
+int checkPath(char*);
 
 int main() {
+    //mkdir("D:/root");
     char input[1000];
     gets(input);
     while (1) {
@@ -52,6 +54,61 @@ int mainFunction(char* input) {
     }
 }
 
+int createFile(char input[]) {
+    char filename[1000], path[1000];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    if(checkPath(path) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    char path2[100] = "D:";
+    strcat(path2, path);
+    makeAllDirectories(path2);
+    makeFile(path2);
+    return 1;
+}
+
+int insertstr(char *input) {
+    char filename[1000], path[1000],stringname[1000], pos[1000];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    if(checkPath(path) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    char path2[100] = "D:";
+    strcat(path2, path);
+    check = getFileName(input, stringname, "_str");
+    if(check == 0) {
+        return 0;
+    }
+    check = getString(input, stringname);
+    if(check == 0) {
+        return 0;
+    }
+    check = getFileName(input, pos, "__pos");
+    if(check == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    writeToFile(path2, stringname, line, character);
+    return 1;
+}
+
 void makeDirectory(const char *path) {
     struct stat st = {0};
     if(stat(path, &st) == -1) {
@@ -79,15 +136,16 @@ int getPath(char input[], char path[]) {
         return 0;
     }
     else if(input[0] == '\"') {
-        int i = 1, counter = 1;
+        int i = 1, j = 0, counter = 1;
         while (input[i] != '\"') {
             if(input[i] == ' ') {
                 counter++;
             }
-            path[i - 1] = input[i];
+            path[j] = input[i];
             i++;
+            j++;
         }
-        path[i - 1] = 0;
+        path[j] = 0;
         char word[100];
         for(int j = 0; j < counter; j++) {
             getFirstWord(input, word);
@@ -106,20 +164,61 @@ int getPath(char input[], char path[]) {
     return 1;
 }
 
-int createFile(char input[]) {
-    char filename[1000], path[1000];
-    int check = getFileName(input, filename, "_file");
-    if(check == 0) {
+int getString(char input[], char path[]) {
+    if(input[0] == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
-        return 0;
+    else if(input[0] == '\"') {
+        int i = 1, j = 0, counter = 1;
+        while (input[i] != '\"') {
+            if(input[i] == ' ') {
+                counter++;
+            }
+            path[j] = input[i];
+            if(input[i] == '\\' && input[i + 1] == '\"') {
+                path[j] = '\"';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] != '\\') {
+                path[j] = '\n';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] == '\\') {
+                path[j] = 'n';
+                i++;
+            }
+            i++;
+            j++;
+        }
+        path[j] = 0;
+        char word[100];
+        for(int j = 0; j < counter; j++) {
+            getFirstWord(input, word);
+        }
     }
-    char path2[100] = "D:";
-    strcat(path2, path);
-    makeAllDirectories(path2);
-    makeFile(path2);
+    else {
+        int i = 0, j = 0;
+        while (input[i] != 0 && input[i] != ' ') {
+            path[j] = input[i];
+            if(input[i] == '\\' && input[i + 1] == '\"') {
+                path[j] = '\"';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] != '\\') {
+                path[j] = '\n';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] == '\\') {
+                path[j] = 'n';
+                i++;
+            }
+            i++;
+            j++;
+        }
+        path[j] = 0;
+        char word[100];
+        getFirstWord(input, word);
+    }
     return 1;
 }
 
@@ -153,36 +252,6 @@ void makeFile(char *path) {
         FILE *myfile = fopen(path, "w");
         fclose(myfile);
     }
-}
-
-int insertstr(char *input) {
-    char filename[1000], path[1000],stringname[1000], pos[1000];
-    int check = getFileName(input, filename, "_file");
-    if(check == 0) {
-        return 0;
-    }
-    check = getPath(input, path);
-    if(check == 0) {
-        return 0;
-    }
-    char path2[100] = "D:";
-    strcat(path2, path);
-    check = getFileName(input, stringname, "_str");
-    if(check == 0) {
-        return 0;
-    }
-    check = getPath(input, stringname);
-    if(check == 0) {
-        return 0;
-    }
-    check = getFileName(input, pos, "__pos");
-    if(check == 0) {
-        return 0;
-    }
-    int line, character;
-    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
-    writeToFile(path2, stringname, line, character);
-    return 1;
 }
 
 void writeToFile(char* path, char* string, int line, int character) {
@@ -254,4 +323,19 @@ void writeToFile(char* path, char* string, int line, int character) {
     fclose(firstfile);
     remove(path);
     rename(path2, path);
-}   
+}
+
+int checkPath(char path[]) {
+    char path2[1000];
+    int i = 1;
+    path2[0] = path[0];
+    while(path[i] != 0 && path[i] !='/') {
+        path2[i] = path[i];
+        i++;
+    }
+    path2[i] = 0;
+    if(strcmp(path2, "/root") == 0) {
+        return 1;
+    }
+    return 0;
+}
