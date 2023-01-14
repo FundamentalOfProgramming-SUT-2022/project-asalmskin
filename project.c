@@ -3,18 +3,21 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <windows.h>
 
-void makeDirectory(const char *path);
+void makeDirectory(const char*);
 void getFirstWord(char*, char*);
 int getPath(char*, char*);
 int createFile(char*);
-int getFileName(char*, char*);
+int getFileName(char*, char*, char*);
 int mainFunction(char*);
 void makeAllDirectories(char*);
 void makeFile(char*);
+int insertstr(char*);
+void writeToFile(char*, char*,int, int);
 
 int main() {
-    char input[300];
+    char input[1000];
     gets(input);
     while (1) {
         if(mainFunction(input) == 0) {
@@ -36,6 +39,14 @@ int mainFunction(char* input) {
             return 1;
         }
     }
+    else if(strcmp(word, "insertstr") == 0) {
+        if(insertstr(input) == 0) {
+            return 0;
+        }
+        else {
+            return 1;
+        }
+    }
     else {
         return 0;
     }
@@ -49,7 +60,7 @@ void makeDirectory(const char *path) {
 }
 
 void getFirstWord(char input[], char word[]) {
-    char first[100];
+    char first[1000];
     strcpy(first, input);
     input = strtok(input, (const char *)"   ");
     if(input == NULL) {
@@ -68,12 +79,19 @@ int getPath(char input[], char path[]) {
         return 0;
     }
     else if(input[0] == '\"') {
-        int i = 1;
+        int i = 1, counter = 1;
         while (input[i] != '\"') {
+            if(input[i] == ' ') {
+                counter++;
+            }
             path[i - 1] = input[i];
             i++;
         }
         path[i - 1] = 0;
+        char word[100];
+        for(int j = 0; j < counter; j++) {
+            getFirstWord(input, word);
+        }
     }
     else {
         int i = 0;
@@ -82,13 +100,15 @@ int getPath(char input[], char path[]) {
             i++;
         }
         path[i] = 0;
+        char word[100];
+        getFirstWord(input, word);
     }
     return 1;
 }
 
 int createFile(char input[]) {
-    char filename[100], path[200];
-    int check = getFileName(input, filename);
+    char filename[1000], path[1000];
+    int check = getFileName(input, filename, "_file");
     if(check == 0) {
         return 0;
     }
@@ -103,12 +123,12 @@ int createFile(char input[]) {
     return 1;
 }
 
-int getFileName(char input[], char filename[]) {
+int getFileName(char input[], char filename[], char str[]) {
     if(input[0] == 0) {
         return 0;
     }
     getFirstWord(input, filename);
-    if(strcmp(filename,"__file") == 0)
+    if(strcmp(filename, str) == 0)
         return 1;
     return 0;
 }
@@ -134,3 +154,104 @@ void makeFile(char *path) {
         fclose(myfile);
     }
 }
+
+int insertstr(char *input) {
+    char filename[1000], path[1000],stringname[1000], pos[1000];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    char path2[100] = "D:";
+    strcat(path2, path);
+    check = getFileName(input, stringname, "_str");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, stringname);
+    if(check == 0) {
+        return 0;
+    }
+    check = getFileName(input, pos, "__pos");
+    if(check == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    writeToFile(path2, stringname, line, character);
+    return 1;
+}
+
+void writeToFile(char* path, char* string, int line, int character) {
+    char path2[1000];
+    int ch, counter = 0, isedited = 0, check = 1;
+    FILE *firstfile = fopen(path, "r");
+    strcpy(path2, path);
+    strcat(path2, "thisfilewillbedeletedsoon");
+    FILE *targetfile = fopen(path2, "w");
+    if(firstfile == NULL || targetfile == NULL) {
+        puts("something went wrong, try again...");
+        return;
+    }
+    while((ch = fgetc(firstfile)) != EOF) {
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            if(counter > 0) {
+                fprintf(targetfile, "\n");
+            }
+            for(int j = 0; j < character; j++) {
+                if(check == 1) {
+                    if(counter > 0) {
+                        ch = fgetc(firstfile);
+                    }
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                    if(check == 1)
+                        fprintf(targetfile, "%c", ch);
+                    if (counter == 0) {
+                        ch = fgetc(firstfile);
+                    }
+                }
+                else{
+                    fprintf(targetfile, " ");
+                }
+            }
+            fprintf(targetfile, "%s", string);
+            isedited = 1;
+            if(check == 1) {
+                while((ch = fgetc(firstfile)) != EOF) {
+                    fprintf(targetfile, "%c", ch);
+                    if(ch == '\n') {
+                        break;
+                    }
+                }
+            }
+            if(check == 0) {
+                fprintf(targetfile, "\n");
+            }
+        }
+        else{
+            fprintf(targetfile, "%c", ch);
+        }
+    }
+    if(isedited == 0) {
+        while (counter < line - 1) {
+        fprintf(targetfile, "\n");
+        counter++;
+        }
+        for(int j = 0; j < character; j++) {
+            fprintf(targetfile, " ");
+        }
+        fprintf(targetfile, "%s", string);
+    }
+    fclose(targetfile);
+    fclose(firstfile);
+    remove(path);
+    rename(path2, path);
+}   
