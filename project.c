@@ -16,6 +16,8 @@ void makeFile(char*);
 int insertstr(char*);
 void writeToFile(char*, char*,int, int);
 int checkPath(char*);
+int cat(char*);
+void readFile(char*);
 
 int main() {
     //mkdir("D:/root");
@@ -31,7 +33,7 @@ int main() {
 }
 
 int mainFunction(char* input) {
-    char word[100];
+    char word[1000];
     getFirstWord(input, word);
     if(strcmp(word, "createfile") == 0) {
         if(createFile(input) == 0){
@@ -43,6 +45,14 @@ int mainFunction(char* input) {
     }
     else if(strcmp(word, "insertstr") == 0) {
         if(insertstr(input) == 0) {
+            return 0;
+        }
+        else {
+            return 1;
+        }
+    }
+    else if(strcmp(word, "cat") == 0) {
+        if(cat(input) == 0) {
             return 0;
         }
         else {
@@ -106,6 +116,26 @@ int insertstr(char *input) {
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     writeToFile(path2, stringname, line, character);
+    return 1;
+}
+
+int cat(char input[]) {
+    char filename[1000], path[1000];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    if(checkPath(path) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    char path2[100] = "D:";
+    strcat(path2, path);
+    readFile(path2);
     return 1;
 }
 
@@ -338,4 +368,18 @@ int checkPath(char path[]) {
         return 1;
     }
     return 0;
+}
+
+void readFile(char path[]) {
+    FILE *myfile = fopen(path, "r");
+    if(myfile == NULL) {
+        puts("something went wrong. please try again...");
+        return;
+    }
+    char ch;
+    while((ch = fgetc(myfile)) != EOF) {
+        printf("%c", ch);
+    }
+    printf("\n");
+    fclose(myfile);
 }
