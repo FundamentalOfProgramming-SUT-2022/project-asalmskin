@@ -18,9 +18,12 @@ void writeToFile(char*, char*,int, int);
 int checkPath(char*);
 int cat(char*);
 void readFile(char*);
+int removestr(char*);
+void removeForward(char*, int, int, int);
+void removeBackward(char*, int, int, int);
 
 int main() {
-    //mkdir("D:/root");
+    makeDirectory("D:/root");
     char input[1000];
     gets(input);
     while (1) {
@@ -35,29 +38,17 @@ int main() {
 int mainFunction(char* input) {
     char word[1000];
     getFirstWord(input, word);
-    if(strcmp(word, "createfile") == 0) {
-        if(createFile(input) == 0){
-            return 0;
-        }
-        else {
-            return 1;
-        }
+    if((strcmp(word, "createfile")) == 0 && (createFile(input) != 0)) {
+        return 1;
     }
-    else if(strcmp(word, "insertstr") == 0) {
-        if(insertstr(input) == 0) {
-            return 0;
-        }
-        else {
-            return 1;
-        }
+    else if((strcmp(word, "insertstr") == 0) && (insertstr(input) != 0)) {
+        return 1;
     }
-    else if(strcmp(word, "cat") == 0) {
-        if(cat(input) == 0) {
-            return 0;
-        }
-        else {
-            return 1;
-        }
+    else if((strcmp(word, "cat") == 0) && (cat(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "removestr") == 0 && (removestr(input) != 0)) {
+        return 1;
     }
     else {
         return 0;
@@ -65,7 +56,7 @@ int mainFunction(char* input) {
 }
 
 int createFile(char input[]) {
-    char filename[1000], path[1000];
+    char filename[100], path[1000];
     int check = getFileName(input, filename, "_file");
     if(check == 0) {
         return 0;
@@ -86,7 +77,7 @@ int createFile(char input[]) {
 }
 
 int insertstr(char *input) {
-    char filename[1000], path[1000],stringname[1000], pos[1000];
+    char filename[100], path[1000],stringname[1000], pos[100];
     int check = getFileName(input, filename, "_file");
     if(check == 0) {
         return 0;
@@ -99,7 +90,7 @@ int insertstr(char *input) {
         puts("invalid path");
         return 1;
     }
-    char path2[100] = "D:";
+    char path2[1000] = "D:";
     strcat(path2, path);
     check = getFileName(input, stringname, "_str");
     if(check == 0) {
@@ -120,7 +111,7 @@ int insertstr(char *input) {
 }
 
 int cat(char input[]) {
-    char filename[1000], path[1000];
+    char filename[100], path[1000];
     int check = getFileName(input, filename, "_file");
     if(check == 0) {
         return 0;
@@ -137,6 +128,48 @@ int cat(char input[]) {
     strcat(path2, path);
     readFile(path2);
     return 1;
+}
+
+int removestr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    char path2[1000] = "D:";
+    strcat(path2, path);
+    check = getFileName(input, pos, "__pos");
+    if(check == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    getFirstWord(input, pos);
+    check = getFileName(input, pos, "_size");
+    if(check == 0) {
+        return 0;
+    }
+    int size;
+    sscanf(input, "%d", &size);
+    getFirstWord(input, pos);
+    sscanf(input, "%s", pos);
+    if(strcmp(pos, "_b") == 0) {
+        if(size <= character + 1) {
+            removeForward(path2, line, character - size + 2, size);
+            return 1;
+        }
+        removeBackward(path2, line, character, size);
+        return 1;
+    }
+    if(strcmp(pos, "_f") == 0) {
+        removeForward(path2, line, character, size);
+        return 1;
+    }
+    return 0;
 }
 
 void makeDirectory(const char *path) {
@@ -286,7 +319,7 @@ void makeFile(char *path) {
 
 void writeToFile(char* path, char* string, int line, int character) {
     char path2[1000];
-    int ch, counter = 0, isedited = 0, check = 1;
+    int ch, ch2, counter = 0, isedited = 0, check = 1, flag = 0;
     FILE *firstfile = fopen(path, "r");
     strcpy(path2, path);
     strcat(path2, "thisfilewillbedeletedsoon");
@@ -303,25 +336,30 @@ void writeToFile(char* path, char* string, int line, int character) {
             if(counter > 0) {
                 fprintf(targetfile, "\n");
             }
+            else if(character > 0) {
+                fprintf(targetfile, "%c", ch);
+            }
+            else {
+                ch2 = ch;
+                flag = 1;
+            }
             for(int j = 0; j < character; j++) {
                 if(check == 1) {
-                    if(counter > 0) {
-                        ch = fgetc(firstfile);
-                    }
+                    ch = fgetc(firstfile);
                     if(ch == '\n' || ch == EOF) {
                         check = 0;
                     }
                     if(check == 1)
                         fprintf(targetfile, "%c", ch);
-                    if (counter == 0) {
-                        ch = fgetc(firstfile);
-                    }
                 }
                 else{
                     fprintf(targetfile, " ");
                 }
             }
             fprintf(targetfile, "%s", string);
+            if(flag == 1) {
+                fprintf(targetfile, "%c", ch2);
+            }
             isedited = 1;
             if(check == 1) {
                 while((ch = fgetc(firstfile)) != EOF) {
@@ -382,4 +420,145 @@ void readFile(char path[]) {
     }
     printf("\n");
     fclose(myfile);
+}
+
+void removeForward(char path[], int line, int character, int size) {
+    char path2[1000];
+    int ch, counter = 0, isedited = 0, check = 1, ch2, flag;
+    FILE *firstfile = fopen(path, "r");
+    strcpy(path2, path);
+    strcat(path2, "thisfilewillbedeletedsoon");
+    FILE *targetfile = fopen(path2, "w");
+    if(firstfile == NULL || targetfile == NULL) {
+        puts("something went wrong, try again...");
+        return;
+    }
+    while((ch = fgetc(firstfile)) != EOF) {
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            if(counter > 0) {
+                fprintf(targetfile, "\n");
+            }
+            else if(character > 0) {
+                fprintf(targetfile, "%c", ch);
+            }
+            else {
+                ch2 = ch;
+                flag = 1;
+            }
+            for(int j = 0; j < character - 1; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                    if(check == 1)
+                        fprintf(targetfile, "%c", ch);
+                }
+                else{
+                    puts("there is not enough characters in your chosen line");
+                    return;
+                }
+            }
+            for(int i = 0; i < size; i++) {
+                ch = fgetc(firstfile);
+            }
+            if(flag == 1) {
+                fprintf(targetfile, "%c", ch2);
+            }
+            isedited = 1;
+            if(check == 1) {
+                while((ch = fgetc(firstfile)) != EOF) {
+                    fprintf(targetfile, "%c", ch);
+                    if(ch == '\n') {
+                        break;
+                    }
+                }
+            }
+            if(check == 0) {
+                fprintf(targetfile, "\n");
+            }
+        }
+        else{
+            fprintf(targetfile, "%c", ch);
+        }
+    }
+    fclose(targetfile);
+    fclose(firstfile);
+    remove(path);
+    rename(path2, path);
+}
+
+
+void removeBackward(char path[], int line, int character, int size) {
+    char path2[1000];
+    int ch, counter = 0, isedited = 0, check = 1, ch2, flag;
+    FILE *firstfile = fopen(path, "r");
+    strcpy(path2, path);
+    strcat(path2, "thisfilewillbedeletedsoon");
+    FILE *targetfile = fopen(path2, "w");
+    if(firstfile == NULL || targetfile == NULL) {
+        puts("something went wrong, try again...");
+        return;
+    }
+    while((ch = fgetc(firstfile)) != EOF) {
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            if(counter > 0) {
+                fprintf(targetfile, "\n");
+            }
+            else if(character > 0) {
+                fprintf(targetfile, "%c", ch);
+            }
+            else {
+                ch2 = ch;
+                flag = 1;
+            }
+            for(int j = 0; j < character - 1; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                    if(check == 1)
+                        fprintf(targetfile, "%c", ch);
+                }
+                else{
+                    puts("there is not enough characters in your chosen line");
+                    return;
+                }
+            }
+            fseek(targetfile, -size, SEEK_CUR);
+            ch = fgetc(firstfile);
+            for(int i = 0; i < size; i++) {
+                fprintf(targetfile, "\0");
+            }
+            if(flag == 1) {
+                fprintf(targetfile, "%c", ch2);
+            }
+            isedited = 1;
+            if(check == 1) {
+                while((ch = fgetc(firstfile)) != EOF) {
+                    fprintf(targetfile, "%c", ch);
+                    if(ch == '\n') {
+                        break;
+                    }
+                }
+            }
+            if(check == 0) {
+                fprintf(targetfile, "\n");
+            }
+        }
+        else{
+            fprintf(targetfile, "%c", ch);
+        }
+    }
+    fclose(targetfile);
+    fclose(firstfile);
+    remove(path);
+    rename(path2, path);
 }
