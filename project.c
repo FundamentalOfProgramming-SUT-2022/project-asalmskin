@@ -21,6 +21,13 @@ void readFile(char*);
 int removestr(char*);
 void removeForward(char*, int, int, int);
 void removeBackward(char*, int, int, int);
+int copystr(char*);
+void copyForward(char*, int, int, int);
+void copyBackward(char*, int, int, int);
+int cutstr(char*);
+int pastestr(char*);
+
+char clipboard[1000];
 
 int main() {
     makeDirectory("D:/root");
@@ -48,6 +55,15 @@ int mainFunction(char* input) {
         return 1;
     }
     else if(strcmp(word, "removestr") == 0 && (removestr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "copystr") == 0 && (copystr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "cutstr") == 0 && (cutstr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "pastestr") == 0 && (pastestr(input) != 0)) {
         return 1;
     }
     else {
@@ -158,10 +174,6 @@ int removestr(char input[]) {
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
     if(strcmp(pos, "_b") == 0) {
-        if(size <= character + 1) {
-            removeForward(path2, line, character - size + 2, size);
-            return 1;
-        }
         removeBackward(path2, line, character, size);
         return 1;
     }
@@ -170,6 +182,111 @@ int removestr(char input[]) {
         return 1;
     }
     return 0;
+}
+
+int copystr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    char path2[1000] = "D:";
+    strcat(path2, path);
+    check = getFileName(input, pos, "__pos");
+    if(check == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    getFirstWord(input, pos);
+    check = getFileName(input, pos, "_size");
+    if(check == 0) {
+        return 0;
+    }
+    int size;
+    sscanf(input, "%d", &size);
+    getFirstWord(input, pos);
+    sscanf(input, "%s", pos);
+    if(strcmp(pos, "_b") == 0) {
+        copyBackward(path2, line, character - 1, size);
+        return 1;
+    }
+    if(strcmp(pos, "_f") == 0) {
+        copyForward(path2, line, character, size);
+        return 1;
+    }
+    return 0;
+}
+
+int cutstr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    char path2[1000] = "D:";
+    strcat(path2, path);
+    check = getFileName(input, pos, "__pos");
+    if(check == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    getFirstWord(input, pos);
+    check = getFileName(input, pos, "_size");
+    if(check == 0) {
+        return 0;
+    }
+    int size;
+    sscanf(input, "%d", &size);
+    getFirstWord(input, pos);
+    sscanf(input, "%s", pos);
+    if(strcmp(pos, "_b") == 0) {
+        copyBackward(path2, line, character - 1, size);
+        removeBackward(path2, line, character, size);
+        return 1;
+    }
+    if(strcmp(pos, "_f") == 0) {
+        copyForward(path2, line, character, size);
+        removeForward(path2, line, character + 1, size);
+        return 1;
+    }
+    return 0;
+}
+
+int pastestr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    int check = getFileName(input, filename, "_file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    char path2[1000] = "D:";
+    strcat(path2, path);
+    check = getFileName(input, pos, "__pos");
+    if(check == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    char stringname[1000];
+    strcpy(stringname, clipboard);
+    if(character > 1)
+        character++;
+    writeToFile(path2, stringname, line, character);
+    return 1;
+    
 }
 
 void makeDirectory(const char *path) {
@@ -561,4 +678,86 @@ void removeBackward(char path[], int line, int character, int size) {
     fclose(firstfile);
     remove(path);
     rename(path2, path);
+}
+
+void copyForward(char path[], int line, int character, int size) {
+    int ch, counter = 0, isedited = 0, check = 1;
+    FILE *firstfile = fopen(path, "r");
+    if(firstfile == NULL) {
+        puts("something went wrong, try again...");
+        return;
+    }
+    while((ch = fgetc(firstfile)) != EOF) {
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            for(int j = 0; j < character; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                }
+                else{
+                    puts("there is not enough characters in your chosen line");
+                    return;
+                }
+            }
+            int i;
+            for(i = 0; i < size; i++) {
+                ch = fgetc(firstfile);
+                if(ch == EOF) {
+                    puts("your file is too short!");
+                    return;
+                }
+                clipboard[i] = ch;
+            }
+            clipboard[i + 1] = 0;
+            isedited = 1;
+        }
+    }
+    fclose(firstfile);
+}
+
+void copyBackward(char path[], int line, int character, int size) {
+    int ch, counter = 0, isedited = 0, check = 1;
+    FILE *firstfile = fopen(path, "r");
+    if(firstfile == NULL) {
+        puts("something went wrong, try again...");
+        return;
+    }
+    while((ch = fgetc(firstfile)) != EOF) {
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            for(int j = 0; j < character; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                }
+                else{
+                    puts("there is not enough characters in your chosen line");
+                    return;
+                }
+            }
+            int i;
+            fseek(firstfile, -size, SEEK_CUR);
+            ch = fgetc(firstfile);
+            for(i = 0; i < size; i++) {
+                ch = fgetc(firstfile);
+                if(ch == EOF) {
+                    puts("your file is too short!");
+                    return;
+                }
+                clipboard[i] = ch;
+            }
+            clipboard[i + 1] = 0;
+            isedited = 1;
+        }
+    }
+    fclose(firstfile);
 }
