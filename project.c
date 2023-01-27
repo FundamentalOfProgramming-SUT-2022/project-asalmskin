@@ -5,9 +5,10 @@
 #include <string.h>
 
 void makeDirectory(const char*);
+int doesDirectoryExist(char*);
 void getFirstWord(char*, char*);
 int getPath(char*, char*);
-int getString(char*, char*);
+int getString(char*, char*, int*);
 int createFile(char*);
 int getFileName(char*, char*, char*);
 int mainFunction(char*);
@@ -26,11 +27,14 @@ void copyForward(char*, int, int, int);
 void copyBackward(char*, int, int, int);
 int cutstr(char*);
 int pastestr(char*);
+int find(char*);
+int findInFile(char*, char*, int, int, int, int);
+void findAll(char*, char*, int, int);
 
-char clipboard[1000];
+char clipboard[100000];
 
 int main() {
-    makeDirectory("D:/root");
+    makeDirectory("./root");
     char input[1000];
     gets(input);
     while (1) {
@@ -45,13 +49,13 @@ int main() {
 int mainFunction(char* input) {
     char word[1000];
     getFirstWord(input, word);
-    if((strcmp(word, "createfile")) == 0 && (createFile(input) != 0)) {
+    if(strcmp(word, "createfile") == 0 && (createFile(input) != 0)) {
         return 1;
     }
-    else if((strcmp(word, "insertstr") == 0) && (insertstr(input) != 0)) {
+    else if(strcmp(word, "insertstr") == 0 && (insertstr(input) != 0)) {
         return 1;
     }
-    else if((strcmp(word, "cat") == 0) && (cat(input) != 0)) {
+    else if(strcmp(word, "cat") == 0 && (cat(input) != 0)) {
         return 1;
     }
     else if(strcmp(word, "removestr") == 0 && (removestr(input) != 0)) {
@@ -66,6 +70,9 @@ int mainFunction(char* input) {
     else if(strcmp(word, "pastestr") == 0 && (pastestr(input) != 0)) {
         return 1;
     }
+    else if(strcmp(word, "find") == 0 && (find(input) != 0)) {
+        return 1;
+    }
     else {
         return 0;
     }
@@ -73,7 +80,7 @@ int mainFunction(char* input) {
 
 int createFile(char input[]) {
     char filename[100], path[1000];
-    int check = getFileName(input, filename, "_file");
+    int check = getFileName(input, filename, "--file");
     if(check == 0) {
         return 0;
     }
@@ -81,11 +88,7 @@ int createFile(char input[]) {
     if(check == 0) {
         return 0;
     }
-    if(checkPath(path) == 0) {
-        puts("invalid path");
-        return 1;
-    }
-    char path2[100] = "D:";
+    char path2[100] = ".";
     strcat(path2, path);
     makeAllDirectories(path2);
     makeFile(path2);
@@ -94,7 +97,7 @@ int createFile(char input[]) {
 
 int insertstr(char *input) {
     char filename[100], path[1000],stringname[1000], pos[100];
-    int check = getFileName(input, filename, "_file");
+    int check = getFileName(input, filename, "--file");
     if(check == 0) {
         return 0;
     }
@@ -102,21 +105,22 @@ int insertstr(char *input) {
     if(check == 0) {
         return 0;
     }
-    if(checkPath(path) == 0) {
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
         puts("invalid path");
         return 1;
     }
-    char path2[1000] = "D:";
-    strcat(path2, path);
-    check = getFileName(input, stringname, "_str");
+    check = getFileName(input, stringname, "--str");
     if(check == 0) {
         return 0;
     }
-    check = getString(input, stringname);
+    int flag;
+    check = getString(input, stringname, &flag);
     if(check == 0) {
         return 0;
     }
-    check = getFileName(input, pos, "__pos");
+    check = getFileName(input, pos, "--pos");
     if(check == 0) {
         return 0;
     }
@@ -128,7 +132,7 @@ int insertstr(char *input) {
 
 int cat(char input[]) {
     char filename[100], path[1000];
-    int check = getFileName(input, filename, "_file");
+    int check = getFileName(input, filename, "--file");
     if(check == 0) {
         return 0;
     }
@@ -136,19 +140,19 @@ int cat(char input[]) {
     if(check == 0) {
         return 0;
     }
-    if(checkPath(path) == 0) {
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
         puts("invalid path");
         return 1;
     }
-    char path2[100] = "D:";
-    strcat(path2, path);
     readFile(path2);
     return 1;
 }
 
 int removestr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "_file");
+    int check = getFileName(input, filename, "--file");
     if(check == 0) {
         return 0;
     }
@@ -156,16 +160,20 @@ int removestr(char input[]) {
     if(check == 0) {
         return 0;
     }
-    char path2[1000] = "D:";
+    char path2[1000] = ".";
     strcat(path2, path);
-    check = getFileName(input, pos, "__pos");
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    check = getFileName(input, pos, "--pos");
     if(check == 0) {
         return 0;
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     getFirstWord(input, pos);
-    check = getFileName(input, pos, "_size");
+    check = getFileName(input, pos, "-size");
     if(check == 0) {
         return 0;
     }
@@ -173,11 +181,11 @@ int removestr(char input[]) {
     sscanf(input, "%d", &size);
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
-    if(strcmp(pos, "_b") == 0) {
+    if(strcmp(pos, "-b") == 0) {
         removeBackward(path2, line, character, size);
         return 1;
     }
-    if(strcmp(pos, "_f") == 0) {
+    if(strcmp(pos, "-f") == 0) {
         removeForward(path2, line, character, size);
         return 1;
     }
@@ -186,7 +194,7 @@ int removestr(char input[]) {
 
 int copystr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "_file");
+    int check = getFileName(input, filename, "--file");
     if(check == 0) {
         return 0;
     }
@@ -194,16 +202,20 @@ int copystr(char input[]) {
     if(check == 0) {
         return 0;
     }
-    char path2[1000] = "D:";
+    char path2[1000] = ".";
     strcat(path2, path);
-    check = getFileName(input, pos, "__pos");
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    check = getFileName(input, pos, "--pos");
     if(check == 0) {
         return 0;
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     getFirstWord(input, pos);
-    check = getFileName(input, pos, "_size");
+    check = getFileName(input, pos, "-size");
     if(check == 0) {
         return 0;
     }
@@ -211,11 +223,11 @@ int copystr(char input[]) {
     sscanf(input, "%d", &size);
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
-    if(strcmp(pos, "_b") == 0) {
+    if(strcmp(pos, "-b") == 0) {
         copyBackward(path2, line, character - 1, size);
         return 1;
     }
-    if(strcmp(pos, "_f") == 0) {
+    if(strcmp(pos, "-f") == 0) {
         copyForward(path2, line, character, size);
         return 1;
     }
@@ -224,7 +236,7 @@ int copystr(char input[]) {
 
 int cutstr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "_file");
+    int check = getFileName(input, filename, "--file");
     if(check == 0) {
         return 0;
     }
@@ -232,16 +244,20 @@ int cutstr(char input[]) {
     if(check == 0) {
         return 0;
     }
-    char path2[1000] = "D:";
+    char path2[1000] = ".";
     strcat(path2, path);
-    check = getFileName(input, pos, "__pos");
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    check = getFileName(input, pos, "--pos");
     if(check == 0) {
         return 0;
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     getFirstWord(input, pos);
-    check = getFileName(input, pos, "_size");
+    check = getFileName(input, pos, "-size");
     if(check == 0) {
         return 0;
     }
@@ -249,14 +265,14 @@ int cutstr(char input[]) {
     sscanf(input, "%d", &size);
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
-    if(strcmp(pos, "_b") == 0) {
+    if(strcmp(pos, "-b") == 0) {
         copyBackward(path2, line, character - 1, size);
         removeBackward(path2, line, character, size);
         return 1;
     }
-    if(strcmp(pos, "_f") == 0) {
+    if(strcmp(pos, "-f") == 0) {
         copyForward(path2, line, character, size);
-        removeForward(path2, line, character + 1, size);
+        removeForward(path2, line, character, size);
         return 1;
     }
     return 0;
@@ -264,7 +280,7 @@ int cutstr(char input[]) {
 
 int pastestr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "_file");
+    int check = getFileName(input, filename, "--file");
     if(check == 0) {
         return 0;
     }
@@ -272,9 +288,13 @@ int pastestr(char input[]) {
     if(check == 0) {
         return 0;
     }
-    char path2[1000] = "D:";
+    char path2[1000] = ".";
     strcat(path2, path);
-    check = getFileName(input, pos, "__pos");
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    check = getFileName(input, pos, "--pos");
     if(check == 0) {
         return 0;
     }
@@ -282,11 +302,79 @@ int pastestr(char input[]) {
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     char stringname[1000];
     strcpy(stringname, clipboard);
-    if(character > 1)
-        character++;
     writeToFile(path2, stringname, line, character);
     return 1;
     
+}
+
+int find(char input[]) {
+    char filename[100], path[1000],stringname[1000], pos[100];
+    int check = getFileName(input, stringname, "--str");
+    if(check == 0) {
+        return 0;
+    }
+    int flag = -1;
+    check = getString(input, stringname, &flag);
+    if(check == 0) {
+        return 0;
+    }
+    check = getFileName(input, filename, "--file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    getFirstWord(input, pos);
+    int num;
+    if(strcmp(pos, "-at") == 0) {
+        int at;
+        sscanf(input, "%d%s", &at, pos);
+        if(strcmp(pos, "-byword") == 0)
+            num = findInFile(path2, stringname, flag, at, 0, 1);
+        else
+            num = findInFile(path2, stringname, flag, at, 0, 0);
+    }
+    else if(strcmp(pos, "-count") == 0) {
+        num = findInFile(path2, stringname, flag, 1, 1, 0);
+    }
+    else if(strcmp(pos, "-byword") == 0) {
+        int at;
+        sscanf(input, "%s %d", pos, &at);
+        if(strcmp(pos, "-at") == 0)
+            num = findInFile(path2, stringname, flag, at, 0, 1);
+        else if(strcmp(pos, "-all") == 0) {
+            findAll(path2, stringname, flag, 1);
+            return 1;
+        }
+        else
+            num = findInFile(path2, stringname, flag, 1, 0, 1);
+    }
+    else if(strcmp(pos, "-all") == 0) {
+        sscanf(input, "%s", pos);
+        if(strcmp(pos, "-byword") == 0) {
+            findAll(path2, stringname, flag, 1);
+            return 1;
+        }
+        else {
+            findAll(path2, stringname, flag, 0);
+            return 1;
+        }
+    }
+    else {
+        num = findInFile(path2, stringname, flag, 1, 0, 0);
+    }
+    if(num >= -1) {
+        printf("%d\n", num);
+    }
+    return 1;
 }
 
 void makeDirectory(const char *path) {
@@ -294,6 +382,14 @@ void makeDirectory(const char *path) {
     if(stat(path, &st) == -1) {
         mkdir(path);
     }
+}
+
+int doesDirectoryExist(char* path) {
+    struct stat st = {0};
+    if(stat(path, &st) == -1) {
+        return 0;
+    }
+    return 1;
 }
 
 void getFirstWord(char input[], char word[]) {
@@ -344,7 +440,7 @@ int getPath(char input[], char path[]) {
     return 1;
 }
 
-int getString(char input[], char path[]) {
+int getString(char input[], char path[], int *flagptr) {
     if(input[0] == 0) {
         return 0;
     }
@@ -366,6 +462,14 @@ int getString(char input[], char path[]) {
             else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] == '\\') {
                 path[j] = 'n';
                 i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == '*') {
+                path[j] = '*';
+                i++;
+            }
+            else if(input[i] == '*') {
+                *flagptr = j;
+                j--;
             }
             i++;
             j++;
@@ -392,6 +496,14 @@ int getString(char input[], char path[]) {
                 path[j] = 'n';
                 i++;
             }
+            else if(input[i] == '\\' && input[i + 1] == '*') {
+                path[j] = '*';
+                i++;
+            }
+            else if(input[i] == '*') {
+                *flagptr = j;
+                j--;
+            }
             i++;
             j++;
         }
@@ -414,12 +526,14 @@ int getFileName(char input[], char filename[], char str[]) {
 
 void makeAllDirectories(char* path) {
     char new_path[200];
-    int l = strlen(path);
-    for(int i = 0; i < l; i++){
+    int i = 0;
+    while(path[i + 1] != 0) {
         new_path[i] = path[i];
+        new_path[i + 1] = 0;
         if(path[i + 1] == '/' && i > 1) {
             makeDirectory(new_path);
         }
+        i++;
     }
 }
 
@@ -442,8 +556,12 @@ void writeToFile(char* path, char* string, int line, int character) {
     strcat(path2, "thisfilewillbedeletedsoon");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL || targetfile == NULL) {
-        puts("something went wrong, try again...");
+        puts("the file doesn't exist");
         return;
+    }
+    if(character == 0 && line == 1) {
+        isedited = 1;
+        fprintf(targetfile, "%s", string);
     }
     while((ch = fgetc(firstfile)) != EOF) {
         if(ch == '\n') {
@@ -514,21 +632,23 @@ int checkPath(char path[]) {
     char path2[1000];
     int i = 1;
     path2[0] = path[0];
-    while(path[i] != 0 && path[i] !='/') {
+    while(path[i] != 0) {
         path2[i] = path[i];
+        if(path[i + 1] == '/' && i > 1) {
+            path2[i + 1] = 0;
+            if(doesDirectoryExist(path2) == 0)  {
+                return 0;
+            }
+        }
         i++;
     }
-    path2[i] = 0;
-    if(strcmp(path2, "/root") == 0) {
-        return 1;
-    }
-    return 0;
+    return 1;
 }
 
 void readFile(char path[]) {
     FILE *myfile = fopen(path, "r");
     if(myfile == NULL) {
-        puts("something went wrong. please try again...");
+        puts("the file doesn't exist");
         return;
     }
     char ch;
@@ -541,13 +661,13 @@ void readFile(char path[]) {
 
 void removeForward(char path[], int line, int character, int size) {
     char path2[1000];
-    int ch, counter = 0, isedited = 0, check = 1, ch2, flag;
+    int ch, counter = 0, isedited = 0, check = 1, ch2, flag, flag2 = 0;
     FILE *firstfile = fopen(path, "r");
     strcpy(path2, path);
     strcat(path2, "thisfilewillbedeletedsoon");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL || targetfile == NULL) {
-        puts("something went wrong, try again...");
+        puts("the file doesn't exist");
         return;
     }
     while((ch = fgetc(firstfile)) != EOF) {
@@ -555,6 +675,9 @@ void removeForward(char path[], int line, int character, int size) {
             counter++;
         }
         if(counter == line - 1 && isedited == 0) {
+            if(line == 1 && character == 0) {
+                flag2 = 1;
+            }
             if(counter > 0) {
                 fprintf(targetfile, "\n");
             }
@@ -565,7 +688,8 @@ void removeForward(char path[], int line, int character, int size) {
                 ch2 = ch;
                 flag = 1;
             }
-            for(int j = 0; j < character - 1; j++) {
+            
+            for(int j = 0 ; j < character - 1; j++) {
                 if(check == 1) {
                     ch = fgetc(firstfile);
                     if(ch == '\n' || ch == EOF) {
@@ -575,16 +699,22 @@ void removeForward(char path[], int line, int character, int size) {
                         fprintf(targetfile, "%c", ch);
                 }
                 else{
+                    fclose(firstfile);
+                    fclose(targetfile);
+                    remove(path2);
                     puts("there is not enough characters in your chosen line");
                     return;
                 }
             }
-            for(int i = 0; i < size; i++) {
+            int i = 0;
+            if(flag2 == 1)
+                i = 1;
+            for( ; i < size; i++) {
                 ch = fgetc(firstfile);
             }
-            if(flag == 1) {
-                fprintf(targetfile, "%c", ch2);
-            }
+            //if(flag == 1) {
+                //fprintf(targetfile, "%c", ch2);
+            //}
             isedited = 1;
             if(check == 1) {
                 while((ch = fgetc(firstfile)) != EOF) {
@@ -617,7 +747,7 @@ void removeBackward(char path[], int line, int character, int size) {
     strcat(path2, "thisfilewillbedeletedsoon");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL || targetfile == NULL) {
-        puts("something went wrong, try again...");
+        puts("the file doesn't exist");
         return;
     }
     while((ch = fgetc(firstfile)) != EOF) {
@@ -645,6 +775,9 @@ void removeBackward(char path[], int line, int character, int size) {
                         fprintf(targetfile, "%c", ch);
                 }
                 else{
+                    fclose(firstfile);
+                    fclose(targetfile);
+                    remove(path2);
                     puts("there is not enough characters in your chosen line");
                     return;
                 }
@@ -681,10 +814,60 @@ void removeBackward(char path[], int line, int character, int size) {
 }
 
 void copyForward(char path[], int line, int character, int size) {
+    int ch, counter = 0, isedited = 0, check = 1, flag = 0;
+    FILE *firstfile = fopen(path, "r");
+    if(firstfile == NULL) {
+        puts("the file doesn't exist");
+        return;
+    }
+    ch = fgetc(firstfile);
+    if(line == 1 && character == 0) {
+        clipboard[0] = ch;
+        flag = 1;
+    }
+    while(ch != EOF) {
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            for(int j = 1; j < character; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                }
+                else{
+                    fclose(firstfile);
+                    puts("there is not enough characters in your chosen line");
+                    return;
+                }
+            }
+            int i = 0;
+            if(flag == 1)
+                i++;
+            for( ; i < size; i++) {
+                ch = fgetc(firstfile);
+                if(ch == EOF) {
+                    fclose(firstfile);
+                    puts("your file is too short!");
+                    return;
+                }
+                clipboard[i] = ch;
+            }
+            clipboard[i + 1] = 0;
+            isedited = 1;
+        }
+        ch = fgetc(firstfile);
+    }
+    fclose(firstfile);
+}
+
+void copyBackward(char path[], int line, int character, int size) {
     int ch, counter = 0, isedited = 0, check = 1;
     FILE *firstfile = fopen(path, "r");
     if(firstfile == NULL) {
-        puts("something went wrong, try again...");
+        puts("the file doesn't exist");
         return;
     }
     while((ch = fgetc(firstfile)) != EOF) {
@@ -700,14 +883,18 @@ void copyForward(char path[], int line, int character, int size) {
                     }
                 }
                 else{
+                    fclose(firstfile);
                     puts("there is not enough characters in your chosen line");
                     return;
                 }
             }
             int i;
+            fseek(firstfile, -size, SEEK_CUR);
+            ch = fgetc(firstfile);
             for(i = 0; i < size; i++) {
                 ch = fgetc(firstfile);
                 if(ch == EOF) {
+                    fclose(firstfile);
                     puts("your file is too short!");
                     return;
                 }
@@ -720,44 +907,163 @@ void copyForward(char path[], int line, int character, int size) {
     fclose(firstfile);
 }
 
-void copyBackward(char path[], int line, int character, int size) {
-    int ch, counter = 0, isedited = 0, check = 1;
-    FILE *firstfile = fopen(path, "r");
-    if(firstfile == NULL) {
-        puts("something went wrong, try again...");
-        return;
-    }
-    while((ch = fgetc(firstfile)) != EOF) {
-        if(ch == '\n') {
-            counter++;
+int findInFile(char path[], char string[], int f, int at, int count, int byword) {
+    int ch, counter = 0, flag = 0, i = 0,ans = -1, flag3 = 0, flag4 = 0;
+    int l = strlen(string), match = 0, lastword = 0, lastans = -1;
+    int something = 0, finish = 0;
+    FILE *myfile = fopen(path, "r");
+    ch = fgetc(myfile);
+    while(i < l) {
+        counter++;
+        if(ch == ' ') {
+            lastword = counter;
         }
-        if(counter == line - 1 && isedited == 0) {
-            for(int j = 0; j < character; j++) {
-                if(check == 1) {
-                    ch = fgetc(firstfile);
-                    if(ch == '\n' || ch == EOF) {
-                        check = 0;
-                    }
+        if(f == i && string[i] != ' ' && string[i] != 0 && something == 0) {
+            int flag2 = 0;
+            int k = i;
+            if(i == 0) {
+                ans = lastword;
+            }
+            while(ch != ' ' && ch != EOF) {
+                if(string[k] == 0 || string[k] == ' ') {
+                    if(flag2 == 1)
+                        flag2 = 2;
+                    break;
+                }
+                if(string[k] == ch) {
+                    flag2 = 1;
+                    k++;
                 }
                 else{
-                    puts("there is not enough characters in your chosen line");
-                    return;
+                    k = i;
+                    flag2 = 0;
+                }
+                ch = fgetc(myfile);
+                counter++;
+            }
+            if(flag2 == 2) {
+                while(ch != ' ' && ch != EOF) {
+                ch = fgetc(myfile);
+                counter++;
                 }
             }
-            int i;
-            fseek(firstfile, -size, SEEK_CUR);
-            ch = fgetc(firstfile);
-            for(i = 0; i < size; i++) {
-                ch = fgetc(firstfile);
-                if(ch == EOF) {
-                    puts("your file is too short!");
-                    return;
-                }
-                clipboard[i] = ch;
+            if(ch == ' ' || ch == EOF) {
+                lastword = counter;
             }
-            clipboard[i + 1] = 0;
-            isedited = 1;
+            if(flag2 != 0) {
+                i = k;
+                flag = 1;
+                something = 1;
+            }
+            else {
+                flag = 0;
+                i = 0;
+            }
+            if(string[i] == 0) {
+                finish = 1;
+            }
         }
+        
+        else if(string[i] == ch && finish == 0) {
+            if(i == 0) {
+                if(f != 0)
+                ans = counter - 1;
+                else
+                ans = lastword;
+            }
+            flag = 1;
+            i++;
+        }
+        else if(i != f && finish == 0){
+            flag = 0;
+            if(f >= 0 && (string[f] == 0 || string[f] == ' ')) {
+                fseek(myfile, -i, SEEK_CUR);
+                counter -= i;
+            }
+            else {
+                fseek(myfile, -i + 1, SEEK_CUR);
+                counter -= i - 1;
+            }
+            i = 0;
+            finish = 0;
+            something = 0;
+        }
+        if(flag == 1 && f == i && (string[i] == ' ' || string[i] == 0) && flag4 == 0) {
+            flag4 = 1;
+            while(ch != ' ' && ch != EOF) {
+                counter++;
+                ch = fgetc(myfile);
+            }
+            if(ch == ' ') {
+                lastword = counter;
+            }
+            fseek(myfile, -1, SEEK_CUR);
+            counter--;
+        }
+        ch = fgetc(myfile);
+        if(i >= l && flag == 1) {
+            flag = 0;
+            i = 0;
+            flag4 = 0;
+            if(lastans == ans) {
+                continue;
+            }
+            finish = 0;
+            something = 1;
+            match++;
+            lastans = ans;
+            if(match == at && count == 0) {
+                fclose(myfile);
+                if(byword == 0)
+                    return ans;
+                else {
+                    flag3 = 1;
+                    break;
+                }
+            }
+        }
+        if(ch == EOF)
+            break;
     }
-    fclose(firstfile);
+    if(count == 1) {
+        fclose(myfile);
+        return match;
+    }
+    if(byword == 1 && flag3 == 1) {
+        FILE *myfile = fopen(path, "r");
+        int counter2 = 0;
+        flag = 0;
+        for(int j = 0; j < ans; j++) {
+            ch = fgetc(myfile);
+            if(ch == ' '&& flag == 0) {
+                flag = 1;
+                counter2++;
+            }
+            else if (ch != ' '){
+                flag = 0;
+            }
+        }
+        fclose(myfile);
+        return counter2;
+    }
+    fclose(myfile);
+    return -1;
+}
+
+void findAll(char path[], char string[], int f, int byword) {
+    int i = 1;
+    int num = findInFile(path, string, f, i, 0, byword);
+    if(num == -1) {
+        puts("couldn't find any");
+    }
+    else {
+        while (num != -1) {
+            printf("%d", num);
+            i++;
+            num = findInFile(path, string, f, i, 0, byword);
+            if(num != -1)
+                printf(", ");
+        }
+        printf("\n");
+    }
 }
