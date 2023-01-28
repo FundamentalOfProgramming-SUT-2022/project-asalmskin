@@ -28,10 +28,12 @@ void copyBackward(char*, int, int, int);
 int cutstr(char*);
 int pastestr(char*);
 int find(char*);
-int findInFile(char*, char*, int, int, int, int, int*);
+int findInFile(char*, char*, int, int, int, int, int*, int*);
 void findAll(char*, char*, int, int);
 int replace(char*);
 void replaceAll(char*, char*, char*, int);
+int grep(char*);
+int simplegrep(char*, char*, int, int, char*);
 
 char clipboard[100000];
 
@@ -78,6 +80,9 @@ int mainFunction(char* input) {
     else if(strcmp(word, "replace") == 0 && (replace(input) != 0)) {
         return 1;
     }
+    else if(strcmp(word, "grep") == 0 && (grep(input) != 0)) {
+        return 1;
+    }
     else {
         return 0;
     }
@@ -85,12 +90,10 @@ int mainFunction(char* input) {
 
 int createFile(char input[]) {
     char filename[100], path[1000];
-    int check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[100] = ".";
@@ -102,12 +105,10 @@ int createFile(char input[]) {
 
 int insertstr(char *input) {
     char filename[100], path[1000],stringname[1000], pos[100];
-    int check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -116,17 +117,14 @@ int insertstr(char *input) {
         puts("invalid path");
         return 1;
     }
-    check = getFileName(input, stringname, "--str");
-    if(check == 0) {
+    if(getFileName(input, stringname, "--str") == 0) {
         return 0;
     }
     int flag;
-    check = getString(input, stringname, &flag);
-    if(check == 0) {
+    if(getString(input, stringname, &flag) == 0) {
         return 0;
     }
-    check = getFileName(input, pos, "--pos");
-    if(check == 0) {
+    if(getFileName(input, pos, "--pos") == 0) {
         return 0;
     }
     int line, character;
@@ -137,12 +135,10 @@ int insertstr(char *input) {
 
 int cat(char input[]) {
     char filename[100], path[1000];
-    int check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -157,12 +153,10 @@ int cat(char input[]) {
 
 int removestr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -171,15 +165,13 @@ int removestr(char input[]) {
         puts("invalid path");
         return 1;
     }
-    check = getFileName(input, pos, "--pos");
-    if(check == 0) {
+    if(getFileName(input, pos, "--pos") == 0) {
         return 0;
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     getFirstWord(input, pos);
-    check = getFileName(input, pos, "-size");
-    if(check == 0) {
+    if(getFileName(input, pos, "-size") == 0) {
         return 0;
     }
     int size;
@@ -199,12 +191,10 @@ int removestr(char input[]) {
 
 int copystr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -213,15 +203,13 @@ int copystr(char input[]) {
         puts("invalid path");
         return 1;
     }
-    check = getFileName(input, pos, "--pos");
-    if(check == 0) {
+    if(getFileName(input, pos, "--pos") == 0) {
         return 0;
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     getFirstWord(input, pos);
-    check = getFileName(input, pos, "-size");
-    if(check == 0) {
+    if(getFileName(input, pos, "-size") == 0) {
         return 0;
     }
     int size;
@@ -241,12 +229,10 @@ int copystr(char input[]) {
 
 int cutstr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -255,15 +241,13 @@ int cutstr(char input[]) {
         puts("invalid path");
         return 1;
     }
-    check = getFileName(input, pos, "--pos");
-    if(check == 0) {
+    if(getFileName(input, pos, "--pos") == 0) {
         return 0;
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
     getFirstWord(input, pos);
-    check = getFileName(input, pos, "-size");
-    if(check == 0) {
+    if(getFileName(input, pos, "-size") == 0) {
         return 0;
     }
     int size;
@@ -285,12 +269,10 @@ int cutstr(char input[]) {
 
 int pastestr(char input[]) {
     char filename[100], path[1000], pos[100];
-    int check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -299,8 +281,7 @@ int pastestr(char input[]) {
         puts("invalid path");
         return 1;
     }
-    check = getFileName(input, pos, "--pos");
-    if(check == 0) {
+    if(getFileName(input, pos, "--pos") == 0) {
         return 0;
     }
     int line, character;
@@ -315,21 +296,17 @@ int pastestr(char input[]) {
 int find(char input[]) {
     char filename[100], path[1000],stringname[1000], pos[100];
     int size;
-    int check = getFileName(input, stringname, "--str");
-    if(check == 0) {
+    if(getFileName(input, stringname, "--str") == 0) {
         return 0;
     }
     int flag = -1;
-    check = getString(input, stringname, &flag);
-    if(check == 0) {
+    if(getString(input, stringname, &flag) == 0) {
         return 0;
     }
-    check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -339,33 +316,46 @@ int find(char input[]) {
         return 1;
     }
     getFirstWord(input, pos);
-    int num;
+    int num, line = 1;
     if(strcmp(pos, "-at") == 0) {
         int at;
         sscanf(input, "%d%s", &at, pos);
         if(strcmp(pos, "-byword") == 0)
-            num = findInFile(path2, stringname, flag, at, 0, 1, &size);
+            num = findInFile(path2, stringname, flag, at, 0, 1, &size, &line);
         else
-            num = findInFile(path2, stringname, flag, at, 0, 0, &size);
+            num = findInFile(path2, stringname, flag, at, 0, 0, &size, &line);
     }
     else if(strcmp(pos, "-count") == 0) {
-        num = findInFile(path2, stringname, flag, 1, 1, 0, &size);
+        getFirstWord(input, pos);
+        if(strcmp(pos, "at") == 0 || strcmp(pos, "-all") == 0 || strcmp(pos, "-byword") == 0) {
+            puts("you cannot use count and other options at the same time");
+            return 1;
+        }
+        num = findInFile(path2, stringname, flag, 1, 1, 0, &size, &line);
     }
     else if(strcmp(pos, "-byword") == 0) {
         int at;
         sscanf(input, "%s %d", pos, &at);
-        if(strcmp(pos, "-at") == 0)
-            num = findInFile(path2, stringname, flag, at, 0, 1, &size);
+        if(strcmp(pos, "-count") == 0) {
+            puts("you cannot use count and byword at the same time");
+            return 1;
+        }
+        else if(strcmp(pos, "-at") == 0)
+            num = findInFile(path2, stringname, flag, at, 0, 1, &size, &line);
         else if(strcmp(pos, "-all") == 0) {
             findAll(path2, stringname, flag, 1);
             return 1;
         }
         else
-            num = findInFile(path2, stringname, flag, 1, 0, 1, &size);
+            num = findInFile(path2, stringname, flag, 1, 0, 1, &size, &line);
     }
     else if(strcmp(pos, "-all") == 0) {
         sscanf(input, "%s", pos);
-        if(strcmp(pos, "-byword") == 0) {
+        if(strcmp(pos, "-count") == 0 || strcmp(pos, "-at") == 0) {
+            puts("you cannot use all with count or at");
+            return 1;
+        }
+        else if(strcmp(pos, "-byword") == 0) {
             findAll(path2, stringname, flag, 1);
             return 1;
         }
@@ -375,7 +365,7 @@ int find(char input[]) {
         }
     }
     else {
-        num = findInFile(path2, stringname, flag, 1, 0, 0, &size);
+        num = findInFile(path2, stringname, flag, 1, 0, 0, &size, &line);
     }
     if(num >= -1) {
         printf("%d\n", num);
@@ -385,30 +375,24 @@ int find(char input[]) {
 
 int replace(char input[]) {
     char filename[100], path[1000], stringname[1000], stringname2[1000], pos[100];
-    int check = getFileName(input, stringname, "--str1");
-    if(check == 0) {
+    if(getFileName(input, stringname, "--str1") == 0) {
         return 0;
     }
     int flag = -1;
-    check = getString(input, stringname, &flag);
-    if(check == 0) {
+    if(getString(input, stringname, &flag) == 0) {
         return 0;
     }
-    check = getFileName(input, pos, "--str2");
-    if(check == 0) {
+    if(getFileName(input, pos, "--str2") == 0) {
         return 0;
     }
     int flag2 = -1;
-    check = getString(input, stringname2, &flag2);
-    if(check == 0 || flag2 != -1) {
+    if(getString(input, stringname2, &flag2) == 0 || flag2 != -1) {
         return 0;
     }
-    check = getFileName(input, filename, "--file");
-    if(check == 0) {
+    if(getFileName(input, filename, "--file") == 0) {
         return 0;
     }
-    check = getPath(input, path);
-    if(check == 0) {
+    if(getPath(input, path) == 0) {
         return 0;
     }
     char path2[1000] = ".";
@@ -419,18 +403,27 @@ int replace(char input[]) {
     }
     int size = 0;
     getFirstWord(input, pos);
-    int num;
+    int num, line = 1;
     if(strcmp(pos, "-at") == 0) {
         int at;
         sscanf(input, "%d%s", &at, pos);
-        num = findInFile(path2, stringname, flag, at, 0, 0, &size);
+        if(strcmp(pos, "-all") == 0) {
+            puts("you cannot use at and all at the same time");
+            return 1;
+        }
+        num = findInFile(path2, stringname, flag, at, 0, 0, &size, &line);
     }
     else if(strcmp(pos, "-all") == 0) {
+        getFirstWord(input, pos);
+        if(strcmp(pos, "-at") == 0) {
+            puts("you cannot use at and all at the same time");
+            return 1;
+        }
         replaceAll(path2, stringname, stringname2, flag);
         return 1;
     }
     else {
-        num = findInFile(path2, stringname, flag, 1, 0, 0, &size);
+        num = findInFile(path2, stringname, flag, 1, 0, 0, &size, &line);
     }
     if(num >= 0) {
         removeForward(path2, 1, num, size);
@@ -439,6 +432,54 @@ int replace(char input[]) {
     }
     else{
         puts("couldn't find the string in your file");
+    }
+    return 1;
+}
+
+int grep(char input[]) {
+    char pos[1000], stringname[1000], path[1000], path2[1000];
+    int option = 0;
+    getFirstWord(input, pos);
+    if(strcmp(pos, "-c") == 0) {
+        option = 1;
+        getFirstWord(input, pos);
+    }
+    else if(strcmp(pos, "-l") == 0) {
+        option = 2;
+        getFirstWord(input, pos);
+    }
+    if(strcmp(pos, "--str") != 0) {
+        return 0;
+    }
+    int flag = -1;
+    if(getString(input, stringname, &flag) == 0) {
+        return 0;
+    }
+    if(getFileName(input, pos, "--files") == 0) {
+        return 0;
+    }
+    int i = 0;
+    int l = strlen(input), counter = 0;
+    input[l] = 0;
+    while(strcmp(input, "\0") != 0) {
+        if(getPath(input, path) == 0)
+            break;
+        path2[0] = '.';
+        path2[1] = 0;
+        strcat(path2,(const char*)path);
+        if(checkPath(path2) == 0)
+            break;
+        i++;
+        counter += simplegrep(path2, stringname, flag, option, path);
+        if(option == 2 && simplegrep(path2, stringname, flag, option, path) > 0) {
+            puts(path2);
+        }
+    }
+    if(counter == 0) {
+        puts("couldn't find any");
+    }
+    else if(option == 1) {
+        printf("%d\n", counter);
     }
     return 1;
 }
@@ -970,16 +1011,25 @@ void copyBackward(char path[], int line, int character, int size) {
     fclose(firstfile);
 }
 
-int findInFile(char path[], char string[], int f, int at, int count, int byword, int *sizeptr) {
+int findInFile(char path[], char string[], int f,
+               int at, int count, int byword, int *sizeptr, int *lineptr) {
     int ch, counter = 0, flag = 0, i = 0,ans = -1, flag3 = 0, flag4 = 0;
     int l = strlen(string), match = 0, lastword = 0, lastans = -1;
-    int something = 0, finish = 0;
+    int something = 0, line = 1;
     FILE *myfile = fopen(path, "r");
     ch = fgetc(myfile);
     while(i < l) {
         counter++;
         if(ch == ' ') {
             lastword = counter;
+        }
+        else if(ch == '\n') {
+            line++;
+            counter = 0, flag = 0, i = 0;
+            ans = -1, flag3 = 0, flag4 = 0;
+            lastword = 0, lastans = -1;
+            ch = fgetc(myfile);
+            continue;
         }
         if(f == i && string[i] != ' ' && string[i] != 0 && something == 0) {
             int flag2 = 0;
@@ -1084,6 +1134,7 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword,
             match++;
             lastans = ans;
             if(match == at && count == 0) {
+                *lineptr = line;
                 fclose(myfile);
                 if(byword == 0)
                     return ans;
@@ -1095,6 +1146,12 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword,
             else {
                 (*sizeptr) = 0;
             }
+        }
+        if(ch == '\n') {
+            line++;
+            counter = 0, flag = 0, i = 0;
+            ans = -1, flag3 = 0, flag4 = 0;
+            lastword = 0, lastans = -1;
         }
         if(ch == EOF)
             break;
@@ -1127,8 +1184,8 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword,
 
 void findAll(char path[], char string[], int f, int byword) {
     int i = 1;
-    int size;
-    int num = findInFile(path, string, f, i, 0, byword, &size);
+    int size, line = 1;
+    int num = findInFile(path, string, f, i, 0, byword, &size, &line);
     if(num == -1) {
         puts("couldn't find any");
     }
@@ -1136,7 +1193,7 @@ void findAll(char path[], char string[], int f, int byword) {
         while (num != -1) {
             printf("%d", num);
             i++;
-            num = findInFile(path, string, f, i, 0, byword, &size);
+            num = findInFile(path, string, f, i, 0, byword, &size, &line);
             if(num != -1)
                 printf(", ");
         }
@@ -1145,15 +1202,51 @@ void findAll(char path[], char string[], int f, int byword) {
 }
 
 void replaceAll(char* path, char* string, char* string2, int f) {
-    int size = 0;
-    int num = findInFile(path, string, f, 1, 1, 0, &size);
+    int size = 0, line = 1;
+    int num = findInFile(path, string, f, 1, 1, 0, &size, &line);
     if(num <= 0) {
         puts("could't find any");
     }
     while(num >= 0) {
         removeForward(path, 1, num, size);
         writeToFile(path, string2, 1, num);
-        num = findInFile(path, string, f, 1, 0, 0, &size);
+        num = findInFile(path, string, f, 1, 0, 0, &size, &line);
     }
     puts("replaced succesfully");
+}
+
+int simplegrep(char path[], char string[], int flag, int option, char path2[]) {
+    int counter = 0, size = 0, line = -1, line2, ch, at = 1;
+    int num = findInFile(path, string, flag, at, 0, 0, &size, &line);
+    line2 = -1;
+    while(num >= 0) {
+        int linecounter = 1;
+        if(line != line2) {
+            counter++;
+            FILE *myfile = fopen(path, "r");
+            while((ch = fgetc(myfile)) != EOF) {
+                if(ch == '\n')
+                    linecounter++;
+                if(linecounter == line && option == 0) {
+                    printf("%s: ", path2);
+                    if(ch == '\n') {
+                        ch = fgetc(myfile);
+                    }
+                    while(ch != '\n') {
+                        printf("%c", ch);
+                        ch = fgetc(myfile);
+                    }
+                    printf("\n");
+                    break;
+                }
+            }
+            fclose(myfile);
+            if(option == 2)
+                return 1;
+        }
+        at++;
+        line2 = line;
+        num = findInFile(path, string, flag, at, 0, 0, &size, &line);
+    }
+    return counter;
 }
