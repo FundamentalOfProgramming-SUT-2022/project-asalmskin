@@ -461,19 +461,24 @@ int grep(char input[]) {
     int i = 0;
     int l = strlen(input), counter = 0;
     input[l] = 0;
-    while(strcmp(input, "\0") != 0) {
-        if(getPath(input, path) == 0)
+    while(1) {
+        if(getPath(input, path) == 0) {
             break;
+        }
         path2[0] = '.';
         path2[1] = 0;
         strcat(path2,(const char*)path);
-        if(checkPath(path2) == 0)
-            break;
-        i++;
-        counter += simplegrep(path2, stringname, flag, option, path);
-        if(option == 2 && simplegrep(path2, stringname, flag, option, path) > 0) {
-            puts(path2);
+        if(checkPath(path2) == 0) {
+            puts("invalid path");
+            return 1;
         }
+        i++;
+        int num = simplegrep(path2, stringname, flag, option, path);
+        if(option == 2 && num > 0) {
+            puts(path);
+        }
+        if(num == -1)
+            return 1;
     }
     if(counter == 0) {
         puts("couldn't find any");
@@ -1224,6 +1229,10 @@ int simplegrep(char path[], char string[], int flag, int option, char path2[]) {
         if(line != line2) {
             counter++;
             FILE *myfile = fopen(path, "r");
+            if(myfile == NULL) {
+                puts("the file doesn't exist");
+                return -1;
+            }
             while((ch = fgetc(myfile)) != EOF) {
                 if(ch == '\n')
                     linecounter++;
