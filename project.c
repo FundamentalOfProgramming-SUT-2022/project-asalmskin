@@ -28,8 +28,10 @@ void copyBackward(char*, int, int, int);
 int cutstr(char*);
 int pastestr(char*);
 int find(char*);
-int findInFile(char*, char*, int, int, int, int);
+int findInFile(char*, char*, int, int, int, int, int*);
 void findAll(char*, char*, int, int);
+int replace(char*);
+void replaceAll(char*, char*, char*, int);
 
 char clipboard[100000];
 
@@ -71,6 +73,9 @@ int mainFunction(char* input) {
         return 1;
     }
     else if(strcmp(word, "find") == 0 && (find(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "replace") == 0 && (replace(input) != 0)) {
         return 1;
     }
     else {
@@ -309,6 +314,7 @@ int pastestr(char input[]) {
 
 int find(char input[]) {
     char filename[100], path[1000],stringname[1000], pos[100];
+    int size;
     int check = getFileName(input, stringname, "--str");
     if(check == 0) {
         return 0;
@@ -338,24 +344,24 @@ int find(char input[]) {
         int at;
         sscanf(input, "%d%s", &at, pos);
         if(strcmp(pos, "-byword") == 0)
-            num = findInFile(path2, stringname, flag, at, 0, 1);
+            num = findInFile(path2, stringname, flag, at, 0, 1, &size);
         else
-            num = findInFile(path2, stringname, flag, at, 0, 0);
+            num = findInFile(path2, stringname, flag, at, 0, 0, &size);
     }
     else if(strcmp(pos, "-count") == 0) {
-        num = findInFile(path2, stringname, flag, 1, 1, 0);
+        num = findInFile(path2, stringname, flag, 1, 1, 0, &size);
     }
     else if(strcmp(pos, "-byword") == 0) {
         int at;
         sscanf(input, "%s %d", pos, &at);
         if(strcmp(pos, "-at") == 0)
-            num = findInFile(path2, stringname, flag, at, 0, 1);
+            num = findInFile(path2, stringname, flag, at, 0, 1, &size);
         else if(strcmp(pos, "-all") == 0) {
             findAll(path2, stringname, flag, 1);
             return 1;
         }
         else
-            num = findInFile(path2, stringname, flag, 1, 0, 1);
+            num = findInFile(path2, stringname, flag, 1, 0, 1, &size);
     }
     else if(strcmp(pos, "-all") == 0) {
         sscanf(input, "%s", pos);
@@ -369,10 +375,70 @@ int find(char input[]) {
         }
     }
     else {
-        num = findInFile(path2, stringname, flag, 1, 0, 0);
+        num = findInFile(path2, stringname, flag, 1, 0, 0, &size);
     }
     if(num >= -1) {
         printf("%d\n", num);
+    }
+    return 1;
+}
+
+int replace(char input[]) {
+    char filename[100], path[1000], stringname[1000], stringname2[1000], pos[100];
+    int check = getFileName(input, stringname, "--str1");
+    if(check == 0) {
+        return 0;
+    }
+    int flag = -1;
+    check = getString(input, stringname, &flag);
+    if(check == 0) {
+        return 0;
+    }
+    check = getFileName(input, pos, "--str2");
+    if(check == 0) {
+        return 0;
+    }
+    int flag2 = -1;
+    check = getString(input, stringname2, &flag2);
+    if(check == 0 || flag2 != -1) {
+        return 0;
+    }
+    check = getFileName(input, filename, "--file");
+    if(check == 0) {
+        return 0;
+    }
+    check = getPath(input, path);
+    if(check == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    int size = 0;
+    getFirstWord(input, pos);
+    int num;
+    if(strcmp(pos, "-at") == 0) {
+        int at;
+        sscanf(input, "%d%s", &at, pos);
+        num = findInFile(path2, stringname, flag, at, 0, 0, &size);
+    }
+    else if(strcmp(pos, "-all") == 0) {
+        replaceAll(path2, stringname, stringname2, flag);
+        return 1;
+    }
+    else {
+        num = findInFile(path2, stringname, flag, 1, 0, 0, &size);
+    }
+    if(num >= 0) {
+        removeForward(path2, 1, num, size);
+        writeToFile(path2, stringname2, 1, num);
+        puts("replaced successfully");
+    }
+    else{
+        puts("couldn't find the string in your file");
     }
     return 1;
 }
@@ -549,6 +615,7 @@ void makeFile(char *path) {
 }
 
 void writeToFile(char* path, char* string, int line, int character) {
+
     char path2[1000];
     int ch, ch2, counter = 0, isedited = 0, check = 1, flag = 0;
     FILE *firstfile = fopen(path, "r");
@@ -562,6 +629,9 @@ void writeToFile(char* path, char* string, int line, int character) {
     if(character == 0 && line == 1) {
         isedited = 1;
         fprintf(targetfile, "%s", string);
+    }
+    else if(line == 1) {
+        character--;
     }
     while((ch = fgetc(firstfile)) != EOF) {
         if(ch == '\n') {
@@ -588,7 +658,11 @@ void writeToFile(char* path, char* string, int line, int character) {
                         fprintf(targetfile, "%c", ch);
                 }
                 else{
-                    fprintf(targetfile, " ");
+                    puts("the line is too short");
+                    fclose(firstfile);
+                    fclose(targetfile);
+                    remove(path2);
+                    return;
                 }
             }
             fprintf(targetfile, "%s", string);
@@ -907,7 +981,7 @@ void copyBackward(char path[], int line, int character, int size) {
     fclose(firstfile);
 }
 
-int findInFile(char path[], char string[], int f, int at, int count, int byword) {
+int findInFile(char path[], char string[], int f, int at, int count, int byword, int *sizeptr) {
     int ch, counter = 0, flag = 0, i = 0,ans = -1, flag3 = 0, flag4 = 0;
     int l = strlen(string), match = 0, lastword = 0, lastans = -1;
     int something = 0, finish = 0;
@@ -940,11 +1014,13 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword)
                 }
                 ch = fgetc(myfile);
                 counter++;
+                (*sizeptr)++;
             }
             if(flag2 == 2) {
                 while(ch != ' ' && ch != EOF) {
-                ch = fgetc(myfile);
-                counter++;
+                    ch = fgetc(myfile);
+                    (*sizeptr)++;
+                    counter++;
                 }
             }
             if(ch == ' ' || ch == EOF) {
@@ -954,38 +1030,44 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword)
                 i = k;
                 flag = 1;
                 something = 1;
+                if(string[i] == ' ') {
+                    counter--;
+                    fseek(myfile, -1, SEEK_CUR);
+                }
             }
             else {
                 flag = 0;
                 i = 0;
-            }
-            if(string[i] == 0) {
-                finish = 1;
+                (*sizeptr) = 0;
             }
         }
         
-        else if(string[i] == ch && finish == 0) {
+        else if(string[i] == ch) {
             if(i == 0) {
                 if(f != 0)
-                ans = counter - 1;
+                    ans = counter - 1;
                 else
-                ans = lastword;
+                    ans = lastword;
+                if(ans != counter - 1) {
+                    (*sizeptr) += counter - lastword - 1;
+                }
             }
             flag = 1;
             i++;
+            (*sizeptr)++;
         }
-        else if(i != f && finish == 0){
+        else if(i != f){
             flag = 0;
-            if(f >= 0 && (string[f] == 0 || string[f] == ' ')) {
+            if(f >= 0 && (string[f] != 0 && string[f] != ' ')) {
                 fseek(myfile, -i, SEEK_CUR);
                 counter -= i;
             }
             else {
-                fseek(myfile, -i + 1, SEEK_CUR);
-                counter -= i - 1;
+                fseek(myfile, -i, SEEK_CUR);
+                counter -= i;
             }
             i = 0;
-            finish = 0;
+            (*sizeptr) = 0;
             something = 0;
         }
         if(flag == 1 && f == i && (string[i] == ' ' || string[i] == 0) && flag4 == 0) {
@@ -993,14 +1075,15 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword)
             while(ch != ' ' && ch != EOF) {
                 counter++;
                 ch = fgetc(myfile);
+                (*sizeptr)++;
             }
             if(ch == ' ') {
                 lastword = counter;
             }
             fseek(myfile, -1, SEEK_CUR);
+            (*sizeptr)--;
             counter--;
         }
-        ch = fgetc(myfile);
         if(i >= l && flag == 1) {
             flag = 0;
             i = 0;
@@ -1008,7 +1091,6 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword)
             if(lastans == ans) {
                 continue;
             }
-            finish = 0;
             something = 1;
             match++;
             lastans = ans;
@@ -1021,9 +1103,13 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword)
                     break;
                 }
             }
+            else {
+                (*sizeptr) = 0;
+            }
         }
         if(ch == EOF)
             break;
+        ch = fgetc(myfile);
     }
     if(count == 1) {
         fclose(myfile);
@@ -1052,7 +1138,8 @@ int findInFile(char path[], char string[], int f, int at, int count, int byword)
 
 void findAll(char path[], char string[], int f, int byword) {
     int i = 1;
-    int num = findInFile(path, string, f, i, 0, byword);
+    int size;
+    int num = findInFile(path, string, f, i, 0, byword, &size);
     if(num == -1) {
         puts("couldn't find any");
     }
@@ -1060,10 +1147,25 @@ void findAll(char path[], char string[], int f, int byword) {
         while (num != -1) {
             printf("%d", num);
             i++;
-            num = findInFile(path, string, f, i, 0, byword);
+            num = findInFile(path, string, f, i, 0, byword, &size);
             if(num != -1)
                 printf(", ");
         }
         printf("\n");
     }
+}
+
+void replaceAll(char* path, char* string, char* string2, int f) {
+    int size = 0, at = 1;
+    int num = findInFile(path, string, f, at, 0, 0, &size);
+    if(num < 0) {
+        puts("could't find any");
+    }
+    while(num >= 0) {
+        at++;
+        removeForward(path, 1, num, size);
+        writeToFile(path, string2, 1, num);
+        num = findInFile(path, string, f, at, 0, 0, &size);
+    }
+    puts("replaced succesfully");
 }
