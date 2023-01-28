@@ -630,9 +630,6 @@ void writeToFile(char* path, char* string, int line, int character) {
         isedited = 1;
         fprintf(targetfile, "%s", string);
     }
-    else if(line == 1) {
-        character--;
-    }
     while((ch = fgetc(firstfile)) != EOF) {
         if(ch == '\n') {
             counter++;
@@ -641,12 +638,9 @@ void writeToFile(char* path, char* string, int line, int character) {
             if(counter > 0) {
                 fprintf(targetfile, "\n");
             }
-            else if(character > 0) {
+            else if(character > 0 && line == 1) {
                 fprintf(targetfile, "%c", ch);
-            }
-            else {
-                ch2 = ch;
-                flag = 1;
+                character--;
             }
             for(int j = 0; j < character; j++) {
                 if(check == 1) {
@@ -687,14 +681,11 @@ void writeToFile(char* path, char* string, int line, int character) {
         }
     }
     if(isedited == 0) {
-        while (counter < line - 1) {
-        fprintf(targetfile, "\n");
-        counter++;
-        }
-        for(int j = 0; j < character; j++) {
-            fprintf(targetfile, " ");
-        }
-        fprintf(targetfile, "%s", string);
+        fclose(targetfile);
+        fclose(firstfile);
+        remove(path2);
+        puts("your file is too short");
+        return;
     }
     fclose(targetfile);
     fclose(firstfile);
@@ -786,9 +777,7 @@ void removeForward(char path[], int line, int character, int size) {
             for( ; i < size; i++) {
                 ch = fgetc(firstfile);
             }
-            //if(flag == 1) {
-                //fprintf(targetfile, "%c", ch2);
-            //}
+        
             isedited = 1;
             if(check == 1) {
                 while((ch = fgetc(firstfile)) != EOF) {
@@ -1156,16 +1145,15 @@ void findAll(char path[], char string[], int f, int byword) {
 }
 
 void replaceAll(char* path, char* string, char* string2, int f) {
-    int size = 0, at = 1;
-    int num = findInFile(path, string, f, at, 0, 0, &size);
-    if(num < 0) {
+    int size = 0;
+    int num = findInFile(path, string, f, 1, 1, 0, &size);
+    if(num <= 0) {
         puts("could't find any");
     }
     while(num >= 0) {
-        at++;
         removeForward(path, 1, num, size);
         writeToFile(path, string2, 1, num);
-        num = findInFile(path, string, f, at, 0, 0, &size);
+        num = findInFile(path, string, f, 1, 0, 0, &size);
     }
     puts("replaced succesfully");
 }
