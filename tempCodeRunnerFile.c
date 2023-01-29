@@ -1,1 +1,2 @@
-i
+tabcounter; i++) {
+                fprintf(target

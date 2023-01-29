@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <Windows.h>
+#include <ctype.h>
 
 void makeDirectory(const char*);
 int doesDirectoryExist(char*);
@@ -39,6 +40,8 @@ int simplegrep(char*, char*, int, int, char*);
 int makeHiddenFile(char*);
 void makeHiddenPath(char*, char*);
 int undo(char*);
+int autoIndent(char*);
+void indent(char*);
 
 char *clipboard;
 
@@ -91,6 +94,9 @@ int mainFunction(char* input) {
     else if(strcmp(word, "undo") == 0 && (undo(input) != 0)) {
         return 1;
     }
+    else if(strcmp(word, "auto-indent") == 0 && (autoIndent(input) != 0)) {
+        return 1;
+    }
     else {
         return 0;
     }
@@ -104,7 +110,7 @@ int createFile(char input[]) {
     if(getPath(input, path) == 0) {
         return 0;
     }
-    char path2[100] = ".";
+    char path2[1000] = ".";
     strcat(path2, path);
     makeAllDirectories(path2);
     makeFile(path2);
@@ -519,7 +525,7 @@ int undo(char input[]) {
     if(getPath(input, path) == 0) {
         return 0;
     }
-    char path2[100] = ".";
+    char path2[1000] = ".";
     strcat(path2, path);
     if(checkPath(path2) == 0) {
         puts("invalid path");
@@ -536,6 +542,22 @@ int undo(char input[]) {
     rename(path, path2);
     DWORD attributes = GetFileAttributes(path2);
     SetFileAttributes(path2, attributes - FILE_ATTRIBUTE_HIDDEN);
+    return 1;
+}
+
+int autoIndent(char input[]) {
+    char path[1000];
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    makeHiddenFile(path2);
+    indent(path2);
     return 1;
 }
 
@@ -894,7 +916,6 @@ void removeForward(char path[], int line, int character, int size) {
     remove(path);
     rename(path2, path);
 }
-
 
 void removeBackward(char path[], int line, int character, int size) {
     char path2[1000];
@@ -1319,6 +1340,7 @@ void makeHiddenPath(char path[], char path2[]) {
 int makeHiddenFile(char path[]) {
     char path2[1000], ch;
     makeHiddenPath(path, path2);
+    remove(path2);
     FILE *firstfile = fopen(path, "r");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL)
@@ -1330,4 +1352,77 @@ int makeHiddenFile(char path[]) {
     DWORD attributes = GetFileAttributes(path2);
     SetFileAttributes(path2, attributes + FILE_ATTRIBUTE_HIDDEN);
     return 1;
+}
+
+void indent(char path[]) {
+    char path2[100] = "./root/temp.txt\0", ch;
+    int spacecounter = 0, tabcounter = 0, flag = 0, flag2 = 0;
+    FILE *firstfile = fopen(path, "r");
+    FILE *targetfile = fopen(path2, "w");
+    ch = fgetc(firstfile);
+    while(ch != EOF) {
+        if(isspace(ch))
+            spacecounter++;
+        if(ch == '{') {
+            fseek(targetfile, -spacecounter, SEEK_CUR);
+            spacecounter = 0;
+            fprintf(targetfile, "\0");
+            if(flag2 == 1) 
+                fprintf(targetfile, " ");
+            else {
+                for(int i = 0; i < tabcounter; i++) {
+                    fprintf(targetfile, "    ");
+                }
+            }
+            fprintf(targetfile, "%c\n", ch);
+            ch = fgetc(firstfile);
+            while(isspace(ch)) {
+                ch = fgetc(firstfile);
+            }
+            flag = 1;
+            tabcounter++;
+        }
+        if(ch == '}') {
+            tabcounter--;
+            fseek(targetfile, -spacecounter, SEEK_CUR);
+            fprintf(targetfile, "\0");
+            spacecounter = 0;
+            fprintf(targetfile,"\n");
+            for(int i = 0; i < tabcounter; i++) {
+                fprintf(targetfile,"    ");
+            }
+            fprintf(targetfile,"}");
+            while(isspace(ch)) {
+                ch = fgetc(firstfile);
+            }
+        }
+        if(ch == '}') {
+            ch = fgetc(firstfile);
+            continue;
+        }
+        else if(ch == '{')
+            continue;
+        if(flag == 1) {
+            for(int i = 0; i < tabcounter; i++) {
+                fprintf(targetfile,"    ");
+            }
+            flag = 0;
+        }
+        fprintf(targetfile, "%c", ch);
+        if(isspace(ch) == 0) {
+            spacecounter = 0;
+        }
+        if(isspace(ch) == 0 && ch != '{' && ch != '}') {
+            flag2 = 1;
+        }
+        if(ch == '\n') {
+            flag = 1;
+            flag2 = 0;
+        }
+        ch = fgetc(firstfile);
+    }
+    fclose(firstfile);
+    fclose(targetfile);
+    remove(path);
+    rename(path2, path);
 }
