@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <Windows.h>
 #include <ctype.h>
+#include <dirent.h>
 
 void makeDirectory(const char*);
 int doesDirectoryExist(char*);
@@ -46,6 +47,8 @@ int compare(char*);
 void compareFiles(char*, char*);
 int lineNumber(char*);
 void printLines(char*, int);
+int tree(char*);
+static void listDir(const char*, int, int);
 
 char *clipboard;
 
@@ -102,6 +105,9 @@ int mainFunction(char* input) {
         return 1;
     }
     else if(strcmp(word, "compare") == 0 && (compare(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "tree") == 0 && (tree(input) != 0)) {
         return 1;
     }
     else {
@@ -589,6 +595,18 @@ int compare(char input[]) {
         return 1;
     }
     compareFiles(path1, path2);
+    return 1;
+}
+
+int tree(char input[]) {
+    int depth;
+    sscanf(input, "%d", &depth);
+    if(depth < -1) {
+        puts("invalid depth");
+        return 1;
+    }
+    puts("root:");
+    listDir("./root", depth, 1);
     return 1;
 }
 
@@ -1387,7 +1405,7 @@ int makeHiddenFile(char path[]) {
 
 void indent(char path[]) {
     char path2[100] = "./root/temp.txt\0", ch;
-    int spacecounter = 0, tabcounter = 0, flag = 0, flag2 = 0;
+    int spacecounter = 0, tabcounter = 0, flag = 0, flag2 = 0, flag3 = 0;
     FILE *firstfile = fopen(path, "r");
     FILE *targetfile = fopen(path2, "w");
     ch = fgetc(firstfile);
@@ -1405,16 +1423,20 @@ void indent(char path[]) {
                     fprintf(targetfile, "    ");
                 }
             }
+            flag2 = 0;
             fprintf(targetfile, "%c\n", ch);
             ch = fgetc(firstfile);
             while(isspace(ch)) {
                 ch = fgetc(firstfile);
             }
             flag = 1;
+            flag3 = 1;
             tabcounter++;
         }
         if(ch == '}') {
             tabcounter--;
+            if(flag3 == 1)
+                spacecounter += 2;
             fseek(targetfile, -spacecounter, SEEK_CUR);
             fprintf(targetfile, "\0");
             spacecounter = 0;
@@ -1426,6 +1448,8 @@ void indent(char path[]) {
             while(isspace(ch)) {
                 ch = fgetc(firstfile);
             }
+            flag2 = 0;
+            flag3 = 0;
         }
         if(ch == '}') {
             ch = fgetc(firstfile);
@@ -1446,9 +1470,10 @@ void indent(char path[]) {
         if(isspace(ch) == 0 && ch != '{' && ch != '}') {
             flag2 = 1;
         }
+        if(ch != '{' && isspace(ch) == 0)
+            flag3 = 0;
         if(ch == '\n') {
             flag = 1;
-            flag2 = 0;
         }
         ch = fgetc(firstfile);
     }
@@ -1524,4 +1549,34 @@ void printLines(char path[], int first) {
             puts(line);
     }
     fclose(file);
+}
+
+static void listDir(const char *path, int depth, int level) {
+    if(depth != -1 && level > depth)
+        return;
+    struct dirent *entry;
+    DIR *dir = opendir(path);
+    if (dir == NULL) {
+        return;
+    }
+    while((entry = readdir(dir)) != NULL) {
+        if(entry->d_name[0] != '.') {
+            for(int i = 1; i < level; i++) {
+                printf("| ");
+            }
+            printf("|---- %s",entry->d_name);
+            if(entry->d_type == DT_DIR) {
+                printf(":\n");
+                char path2[1000];
+                strcpy(path2, path);
+                strcat(path2, "/");
+                strcat(path2, entry->d_name);
+                listDir(path2, depth, level + 1);
+            }
+            else{
+                printf("\n");
+            }
+        }
+    }
+    closedir(dir);
 }
