@@ -3,6 +3,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <stdlib.h>
+#include <Windows.h>
 
 void makeDirectory(const char*);
 int doesDirectoryExist(char*);
@@ -34,8 +36,11 @@ int replace(char*);
 void replaceAll(char*, char*, char*, int);
 int grep(char*);
 int simplegrep(char*, char*, int, int, char*);
+int makeHiddenFile(char*);
+void makeHiddenPath(char*, char*);
+int undo(char*);
 
-char clipboard[100000];
+char *clipboard;
 
 int main() {
     makeDirectory("./root");
@@ -83,6 +88,9 @@ int mainFunction(char* input) {
     else if(strcmp(word, "grep") == 0 && (grep(input) != 0)) {
         return 1;
     }
+    else if(strcmp(word, "undo") == 0 && (undo(input) != 0)) {
+        return 1;
+    }
     else {
         return 0;
     }
@@ -100,6 +108,7 @@ int createFile(char input[]) {
     strcat(path2, path);
     makeAllDirectories(path2);
     makeFile(path2);
+    makeHiddenFile(path2);
     return 1;
 }
 
@@ -129,6 +138,7 @@ int insertstr(char *input) {
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    makeHiddenFile(path2);
     writeToFile(path2, stringname, line, character);
     return 1;
 }
@@ -178,6 +188,7 @@ int removestr(char input[]) {
     sscanf(input, "%d", &size);
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
+    makeHiddenFile(path2);
     if(strcmp(pos, "-b") == 0) {
         removeBackward(path2, line, character, size);
         return 1;
@@ -214,10 +225,15 @@ int copystr(char input[]) {
     }
     int size;
     sscanf(input, "%d", &size);
+    free(clipboard);
+    clipboard = (char*)malloc(size);
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
     if(strcmp(pos, "-b") == 0) {
-        copyBackward(path2, line, character - 1, size);
+        if(size <= character) 
+            copyForward(path2, line, character - size, size);
+        else
+            copyBackward(path2, line, character, size);
         return 1;
     }
     if(strcmp(pos, "-f") == 0) {
@@ -252,10 +268,16 @@ int cutstr(char input[]) {
     }
     int size;
     sscanf(input, "%d", &size);
+    free(clipboard);
+    clipboard = (char*)malloc(size);
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
+    makeHiddenFile(path2);
     if(strcmp(pos, "-b") == 0) {
-        copyBackward(path2, line, character - 1, size);
+        if(size <= character) 
+            copyForward(path2, line, character - size, size);
+        else
+            copyBackward(path2, line, character, size);
         removeBackward(path2, line, character, size);
         return 1;
     }
@@ -286,9 +308,8 @@ int pastestr(char input[]) {
     }
     int line, character;
     sscanf(input, "%d%*[^0123456789]%d", &line, &character);
-    char stringname[1000];
-    strcpy(stringname, clipboard);
-    writeToFile(path2, stringname, line, character);
+    makeHiddenFile(path2);
+    writeToFile(path2, clipboard, line, character);
     return 1;
     
 }
@@ -401,6 +422,7 @@ int replace(char input[]) {
         puts("invalid path");
         return 1;
     }
+    makeHiddenFile(path2);
     int size = 0;
     getFirstWord(input, pos);
     int num, line = 1;
@@ -486,6 +508,34 @@ int grep(char input[]) {
     else if(option == 1) {
         printf("%d\n", counter);
     }
+    return 1;
+}
+
+int undo(char input[]) {
+    char filename[100], path[1000];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[100] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    FILE *file = fopen(path2, "r");
+    if(file == NULL) {
+        puts("the file doesn't exist");
+        return 1;
+    }
+    fclose(file);
+    makeHiddenPath(path2, path);
+    remove(path2);
+    rename(path, path2);
+    DWORD attributes = GetFileAttributes(path2);
+    SetFileAttributes(path2, attributes - FILE_ATTRIBUTE_HIDDEN);
     return 1;
 }
 
@@ -665,8 +715,7 @@ void writeToFile(char* path, char* string, int line, int character) {
     char path2[1000];
     int ch, ch2, counter = 0, isedited = 0, check = 1, flag = 0;
     FILE *firstfile = fopen(path, "r");
-    strcpy(path2, path);
-    strcat(path2, "thisfilewillbedeletedsoon");
+    strcpy(path2, "./root/.temp.txt");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL || targetfile == NULL) {
         puts("the file doesn't exist");
@@ -774,8 +823,7 @@ void removeForward(char path[], int line, int character, int size) {
     char path2[1000];
     int ch, counter = 0, isedited = 0, check = 1, ch2, flag, flag2 = 0;
     FILE *firstfile = fopen(path, "r");
-    strcpy(path2, path);
-    strcat(path2, "thisfilewillbedeletedsoon");
+    strcpy(path2, "./root/.temp.txt");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL || targetfile == NULL) {
         puts("the file doesn't exist");
@@ -852,8 +900,7 @@ void removeBackward(char path[], int line, int character, int size) {
     char path2[1000];
     int ch, counter = 0, isedited = 0, check = 1, ch2, flag;
     FILE *firstfile = fopen(path, "r");
-    strcpy(path2, path);
-    strcat(path2, "thisfilewillbedeletedsoon");
+    strcpy(path2, "./root/.temp.txt");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL || targetfile == NULL) {
         puts("the file doesn't exist");
@@ -864,38 +911,27 @@ void removeBackward(char path[], int line, int character, int size) {
             counter++;
         }
         if(counter == line - 1 && isedited == 0) {
-            if(counter > 0) {
-                fprintf(targetfile, "\n");
+            if(ch == '\n') {
+                ch = fgetc(firstfile);
             }
-            else if(character > 0) {
-                fprintf(targetfile, "%c", ch);
-            }
-            else {
-                ch2 = ch;
-                flag = 1;
-            }
-            for(int j = 0; j < character - 1; j++) {
+            fseek(firstfile, -1, SEEK_CUR);
+            for(int j = 0; j < character; j++) {
                 if(check == 1) {
                     ch = fgetc(firstfile);
                     if(ch == '\n' || ch == EOF) {
                         check = 0;
                     }
                     if(check == 1)
-                        fprintf(targetfile, "%c", ch);
+                    fprintf(targetfile, "%c", ch);
                 }
                 else{
                     fclose(firstfile);
-                    fclose(targetfile);
-                    remove(path2);
                     puts("there is not enough characters in your chosen line");
                     return;
                 }
             }
             fseek(targetfile, -size, SEEK_CUR);
-            ch = fgetc(firstfile);
-            for(int i = 0; i < size; i++) {
-                fprintf(targetfile, "\0");
-            }
+            fprintf(targetfile, "\0");
             if(flag == 1) {
                 fprintf(targetfile, "%c", ch2);
             }
@@ -964,7 +1000,7 @@ void copyForward(char path[], int line, int character, int size) {
                 }
                 clipboard[i] = ch;
             }
-            clipboard[i + 1] = 0;
+            clipboard[i] = 0;
             isedited = 1;
         }
         ch = fgetc(firstfile);
@@ -984,6 +1020,10 @@ void copyBackward(char path[], int line, int character, int size) {
             counter++;
         }
         if(counter == line - 1 && isedited == 0) {
+            if(ch == '\n') {
+                ch = fgetc(firstfile);
+            }
+            fseek(firstfile, -1, SEEK_CUR);
             for(int j = 0; j < character; j++) {
                 if(check == 1) {
                     ch = fgetc(firstfile);
@@ -998,8 +1038,7 @@ void copyBackward(char path[], int line, int character, int size) {
                 }
             }
             int i;
-            fseek(firstfile, -size, SEEK_CUR);
-            ch = fgetc(firstfile);
+            fseek(firstfile, -size - 1, SEEK_CUR);
             for(i = 0; i < size; i++) {
                 ch = fgetc(firstfile);
                 if(ch == EOF) {
@@ -1009,7 +1048,7 @@ void copyBackward(char path[], int line, int character, int size) {
                 }
                 clipboard[i] = ch;
             }
-            clipboard[i + 1] = 0;
+            clipboard[i] = 0;
             isedited = 1;
         }
     }
@@ -1258,4 +1297,37 @@ int simplegrep(char path[], char string[], int flag, int option, char path2[]) {
         num = findInFile(path, string, flag, at, 0, 0, &size, &line);
     }
     return counter;
+}
+
+void makeHiddenPath(char path[], char path2[]) {
+    int l = strlen(path), counter = 0;
+    for(int i = 0; i < l; i++) {
+        if(path[i] == '/')
+            counter = i;
+    }
+    int i;
+    for(i = 0; i <= counter; i++) {
+        path2[i] = path[i];
+    }
+    path2[i] = '.';
+    for(i = counter + 1; i < l; i++) {
+        path2[i + 1] = path[i];
+    }
+    path2[i + 1] = 0;
+}
+
+int makeHiddenFile(char path[]) {
+    char path2[1000], ch;
+    makeHiddenPath(path, path2);
+    FILE *firstfile = fopen(path, "r");
+    FILE *targetfile = fopen(path2, "w");
+    if(firstfile == NULL)
+        return 0;
+    while((ch = fgetc(firstfile)) != EOF)
+        fprintf(targetfile, "%c", ch);
+    fclose(firstfile);
+    fclose(targetfile);
+    DWORD attributes = GetFileAttributes(path2);
+    SetFileAttributes(path2, attributes + FILE_ATTRIBUTE_HIDDEN);
+    return 1;
 }
