@@ -42,6 +42,10 @@ void makeHiddenPath(char*, char*);
 int undo(char*);
 int autoIndent(char*);
 void indent(char*);
+int compare(char*);
+void compareFiles(char*, char*);
+int lineNumber(char*);
+void printLines(char*, int);
 
 char *clipboard;
 
@@ -95,6 +99,9 @@ int mainFunction(char* input) {
         return 1;
     }
     else if(strcmp(word, "auto-indent") == 0 && (autoIndent(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "compare") == 0 && (compare(input) != 0)) {
         return 1;
     }
     else {
@@ -558,6 +565,30 @@ int autoIndent(char input[]) {
     }
     makeHiddenFile(path2);
     indent(path2);
+    return 1;
+}
+
+int compare(char input[]) {
+    char path[1000];
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path1[1000] = ".";
+    strcat(path1, path);
+    if(checkPath(path1) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        puts("invalid path");
+        return 1;
+    }
+    compareFiles(path1, path2);
     return 1;
 }
 
@@ -1425,4 +1456,72 @@ void indent(char path[]) {
     fclose(targetfile);
     remove(path);
     rename(path2, path);
+}
+
+void compareFiles(char path1[], char path2[]) {
+    FILE *file1 = fopen(path1, "r");
+    FILE *file2 = fopen(path2, "r");
+    if(file1 == NULL || file2 == NULL) {
+        fclose(file1);
+        fclose(file2);
+        puts("the file doesn't exist");
+        return;
+    }
+    char line1[1000], line2[1000];
+    int linecounter = 0, anscounter = 0, end1 = 0, end2 = 0;
+    while(1) {
+        if(fgets(line1, sizeof(line1), file1) == NULL) {
+            end1 = 1;
+            break;
+        }
+        else if(fgets(line2, sizeof(line2), file2) == NULL) {
+            end2 = 1;
+            break;
+        }
+        linecounter++;
+        if(strcmp(line1, line2) != 0) {
+            anscounter++;
+            printf("============ #%d ============\n", linecounter);
+            puts(line1);
+            printf("%s",line2);
+        }
+    }
+    fclose(file1);
+    fclose(file2);
+    int num1 = lineNumber(path1);
+    int num2 = lineNumber(path2);
+    if(num1 > num2) {
+        printf(">>>>>>>>>>>> #%d - #%d >>>>>>>>>>>>\n", num2 + 1, num1);
+        printLines(path1, num2 + 1);
+    }
+    else if(num2 > num1) {
+        printf(">>>>>>>>>>>> #%d - #%d >>>>>>>>>>>>\n", num1 + 1, num2);
+        printLines(path2, num1 + 1);
+    }
+    else if(anscounter == 0) {
+        puts("files are the same");
+    }
+}
+
+int lineNumber(char path[]) {
+    FILE *file = fopen(path, "r");
+    int counter = 0;
+    char line[1000];
+    while(fgets(line, sizeof(line), file) != NULL) {
+        counter++;
+    }
+    fclose(file);
+    return counter;
+}
+
+void printLines(char path[], int first) {
+    FILE *file = fopen(path, "r");
+    int counter = 0;
+    char line[1000];
+    while(fgets(line, sizeof(line), file) != NULL) {
+        counter++;
+        if(counter >= first)
+            puts(line);
+    }
+    fclose(file);
 }
