@@ -51,6 +51,7 @@ int tree(char*);
 static void listDir(const char*, int, int);
 int armanFunction(char*);
 void printLine(int, char*, char*);
+int bywordCounter(char*, int, int);
 
 char *clipboard;
 int arman = 0;
@@ -196,7 +197,6 @@ int cat(char input[]) {
     readFile(path2);
     if(arman == 1 && armanFunction(input) == 0)
         return 0;
-    makeHiddenFile(path2);
     return 1;
 }
 
@@ -229,7 +229,11 @@ int removestr(char input[]) {
     sscanf(input, "%s", pos);
     makeHiddenFile(path2);
     if(strcmp(pos, "-b") == 0) {
-        removeBackward(path2, line, character, size);
+        if(size <= character) {
+            removeForward(path2, line, character - size, size);
+        }
+        else
+            removeBackward(path2, line, character, size - 1);
         return 1;
     }
     if(strcmp(pos, "-f") == 0) {
@@ -268,12 +272,9 @@ int copystr(char input[]) {
     clipboard = (char*)malloc(size);
     getFirstWord(input, pos);
     sscanf(input, "%s", pos);
-    makeHiddenFile(path2);
     if(strcmp(pos, "-b") == 0) {
-        if(size <= character) 
-            copyForward(path2, line, character - size, size);
-        else
-            copyBackward(path2, line, character, size);
+        copyBackward(path2, line, character, size);
+        clipboard[size] = 0;
         return 1;
     }
     if(strcmp(pos, "-f") == 0) {
@@ -314,11 +315,11 @@ int cutstr(char input[]) {
     sscanf(input, "%s", pos);
     makeHiddenFile(path2);
     if(strcmp(pos, "-b") == 0) {
-        if(size <= character) 
-            copyForward(path2, line, character - size, size);
+        copyBackward(path2, line, character, size);
+        if(size <= character)
+            removeForward(path2, line, character - size, size);
         else
-            copyBackward(path2, line, character, size);
-        removeBackward(path2, line, character, size);
+            removeBackward(path2, line, character, size - 1);
         return 1;
     }
     if(strcmp(pos, "-f") == 0) {
@@ -356,7 +357,7 @@ int pastestr(char input[]) {
 
 int find(char input[]) {
     char filename[100], path[1000],stringname[1000], pos[100];
-    int size, flag = -1;;
+    int size, flag = -1, byword = 0;
     if(arman_output == 0) {
         if(getFileName(input, stringname, "--str") == 0) {
             return 0;
@@ -388,6 +389,7 @@ int find(char input[]) {
         char arman_check[1000];
         sscanf(input, "%d%s%s", &at, pos, arman_check);
         if(strcmp(pos, "-byword") == 0) {
+            byword = 1;
             if(strcmp(arman_check, "=D") == 0) {
                 arman = 1;
                 arman_string[0] = 0;
@@ -436,6 +438,7 @@ int find(char input[]) {
         num = findInFile(path2, stringname, flag, 1, 1, 0, &size, &line);
     }
     else if(strcmp(pos, "-byword") == 0) {
+        byword = 1;
         int at;
         char arman_check[1000];
         sscanf(input, "%s", pos);
@@ -487,6 +490,7 @@ int find(char input[]) {
             return 1;
         }
         else if(strcmp(pos, "-byword") == 0) {
+            byword = 1;
             if(strcmp(arman_check, "-at") == 0 || strcmp(arman_check, "-count") == 0) {
                 puts("invalid options");
                 return 1;
@@ -522,6 +526,9 @@ int find(char input[]) {
         num = findInFile(path2, stringname, flag, 1, 0, 0, &size, &line);
     }
     if(num >= -1) {
+        if(byword == 1) {
+            num = bywordCounter(path2, num, line);
+        }
         if(arman == 0) {
             printf("%d:%d\n", line, num);
         }
@@ -563,7 +570,6 @@ int replace(char input[]) {
         puts("invalid path");
         return 1;
     }
-    makeHiddenFile(path2);
     int size = 0;
     getFirstWord(input, pos);
     int num, line = 1;
@@ -715,6 +721,7 @@ int undo(char input[]) {
     rename(path, path2);
     DWORD attributes = GetFileAttributes(path2);
     SetFileAttributes(path2, attributes - FILE_ATTRIBUTE_HIDDEN);
+    makeHiddenFile(path2);
     return 1;
 }
 
@@ -777,7 +784,6 @@ int tree(char input[]) {
         getFirstWord(input, pos);
     }
     if(depth < -1) {
-        if(arman == 0)
         puts("invalid depth");
         return 1;
     }
@@ -1060,10 +1066,12 @@ void writeToFile(char* path, char* string, int line, int character) {
         puts("your file is too short");
         return;
     }
-    fclose(targetfile);
-    fclose(firstfile);
-    remove(path);
-    rename(path2, path);
+    else {
+        fclose(targetfile);
+        fclose(firstfile);
+        remove(path);
+        rename(path2, path);
+    }
 }
 
 int checkPath(char path[]) {
@@ -1215,7 +1223,7 @@ void removeBackward(char path[], int line, int character, int size) {
                     return;
                 }
             }
-            fseek(targetfile, -size, SEEK_CUR);
+            fseek(targetfile, -size - 1, SEEK_CUR);
             fprintf(targetfile, "\0");
             if(flag == 1) {
                 fprintf(targetfile, "%c", ch2);
@@ -1269,6 +1277,7 @@ void copyForward(char path[], int line, int character, int size) {
                 }
                 else{
                     fclose(firstfile);
+                    clipboard[0] = 0;
                     puts("there is not enough characters in your chosen line");
                     return;
                 }
@@ -1280,6 +1289,7 @@ void copyForward(char path[], int line, int character, int size) {
                 ch = fgetc(firstfile);
                 if(ch == EOF) {
                     fclose(firstfile);
+                    clipboard[0] = 0;
                     puts("your file is too short!");
                     return;
                 }
@@ -1294,56 +1304,72 @@ void copyForward(char path[], int line, int character, int size) {
 }
 
 void copyBackward(char path[], int line, int character, int size) {
-    int ch, counter = 0, isedited = 0, check = 1;
+    int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
     FILE *firstfile = fopen(path, "r");
     if(firstfile == NULL) {
         puts("the file doesn't exist");
         return;
     }
-    while((ch = fgetc(firstfile)) != EOF) {
+    ch = fgetc(firstfile);
+    while(ch != EOF) {
+        counter2++;
         if(ch == '\n') {
             counter++;
         }
         if(counter == line - 1 && isedited == 0) {
-            if(ch == '\n') {
-                ch = fgetc(firstfile);
-            }
-            fseek(firstfile, -1, SEEK_CUR);
             for(int j = 0; j < character; j++) {
                 if(check == 1) {
                     ch = fgetc(firstfile);
+                    counter2++;
                     if(ch == '\n' || ch == EOF) {
                         check = 0;
                     }
                 }
-                else{
+                if(check == 0){
                     fclose(firstfile);
                     puts("there is not enough characters in your chosen line");
                     return;
                 }
             }
+            isedited = 1;
+            fclose(firstfile);
+            break;
+        }
+        ch = fgetc(firstfile);
+    }
+    if(isedited == 0) {
+        puts("your file is too short!");
+        fclose(firstfile);
+    }
+    else {
+        if(counter2 - size < 0) {
+            puts("your file is too short!");
+            return;
+        }
+        else{
+            FILE *file = fopen(path, "r");
+            ch = fgetc(file);
+            int counter3 = 0;
+            while(counter3 < counter2 - size) {
+                counter3++;
+                ch = fgetc(file);
+            }
             int i;
-            fseek(firstfile, -size - 1, SEEK_CUR);
             for(i = 0; i < size; i++) {
-                ch = fgetc(firstfile);
-                if(ch == EOF) {
-                    fclose(firstfile);
-                    puts("your file is too short!");
-                    return;
-                }
                 clipboard[i] = ch;
+                ch = fgetc(file);
             }
             clipboard[i] = 0;
-            isedited = 1;
+            fclose(file);
         }
     }
-    fclose(firstfile);
 }
 
 int findInFile(char path[], char string[], int f,
                int at, int count, int byword, int *sizeptr, int *lineptr) {
-    int ch, counter = 0, flag = 0, i = 0,ans = -1, flag3 = 0, flag4 = 0;
+    int counter = 0, flag = 0, i = 0,ans = -1, flag3 = 0, flag4 = 0;
     int l = strlen(string), match = 0, lastword = 0, lastans = -1;
+    char ch;
     int something = 0, line = 1;
     FILE *myfile = fopen(path, "r");
     ch = fgetc(myfile);
@@ -1457,12 +1483,7 @@ int findInFile(char path[], char string[], int f,
             if(match == at && count == 0) {
                 *lineptr = line;
                 fclose(myfile);
-                if(byword == 0)
-                    return ans;
-                else {
-                    flag3 = 1;
-                    break;
-                }
+                return ans;
             }
             else {
                 (*sizeptr) = 0;
@@ -1470,7 +1491,7 @@ int findInFile(char path[], char string[], int f,
         }
         if(ch == EOF)
             break;
-        else if(ch == '\n') {
+        if(ch == '\n') {
             line++;
             counter = 0, flag = 0, i = 0;
             ans = -1, flag3 = 0, flag4 = 0;
@@ -1483,25 +1504,45 @@ int findInFile(char path[], char string[], int f,
         fclose(myfile);
         return match;
     }
+    int counter2;
     if(byword == 1 && flag3 == 1) {
-        FILE *myfile = fopen(path, "r");
-        int counter2 = 0;
-        flag = 0;
-        for(int j = 0; j < ans; j++) {
-            ch = fgetc(myfile);
-            if(ch == ' '&& flag == 0) {
-                flag = 1;
-                counter2++;
-            }
-            else if (ch != ' '){
-                flag = 0;
-            }
-        }
-        fclose(myfile);
-        return counter2;
+        return bywordCounter(path, ans, *lineptr);
     }
     fclose(myfile);
     return -1;
+}
+
+int bywordCounter(char path[], int ans, int line) {
+    FILE *myfile = fopen(path, "r");
+    if(myfile == NULL) {
+        puts("the file doesn't exist");
+        return -1;
+    }
+    int ch;
+    char counter2 = 0;
+    int flag = 0;
+    int linecounter = 1;
+    while(1) {
+        ch = fgetc(myfile);
+        if(linecounter == line) {
+            for(int j = 0; j < ans; j++) {
+                if(ch == ' '&& flag == 0) {
+                    flag = 1;
+                    counter2++;
+                }
+                else if (ch != ' '){
+                    flag = 0;
+                }
+                ch = fgetc(myfile);
+            }
+            break;
+        } 
+        if(ch == '\n') {
+            linecounter++; 
+        }
+    }
+    fclose(myfile);
+    return counter2;
 }
 
 void findAll(char path[], char string[], int f, int byword) {
@@ -1517,6 +1558,9 @@ void findAll(char path[], char string[], int f, int byword) {
     }
     else {
         while (num != -1) {
+            if(byword == 1) {
+            num = bywordCounter(path, num, line);
+            }
             if(arman == 0)
                 printf("%d:%d", line, num);
             else {
@@ -1563,10 +1607,12 @@ int simplegrep(char path[], char string[], int flag, int option, char path2[]) {
     while(num >= 0) {
         if(line != line2) {
             counter++;
-            if(option == 0)
+            if(option == 0) {
                 printLine(line, path, path2);
-            if(option == 2)
+            }
+            if(option == 2) {
                 return 1;
+            }
         }
         at++;
         line2 = line;
@@ -1612,7 +1658,11 @@ int makeHiddenFile(char path[]) {
 void indent(char path[]) {
     char path2[100] = "./root/temp.txt\0", ch;
     int spacecounter = 0, tabcounter = 0, flag = 0, flag2 = 0, flag3 = 0;
-    FILE *firstfile = fopen(path, "r");
+    FILE *firstfile = fopen(path, "r"); 
+    if(firstfile == NULL) {
+        puts("the file doesn't exist");
+        return;
+    }
     FILE *targetfile = fopen(path2, "w");
     ch = fgetc(firstfile);
     while(ch != EOF) {
