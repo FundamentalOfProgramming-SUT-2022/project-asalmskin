@@ -229,11 +229,7 @@ int removestr(char input[]) {
     sscanf(input, "%s", pos);
     makeHiddenFile(path2);
     if(strcmp(pos, "-b") == 0) {
-        if(size <= character) {
-            removeForward(path2, line, character - size, size);
-        }
-        else
-            removeBackward(path2, line, character, size - 1);
+        removeBackward(path2, line, character, size);
         return 1;
     }
     if(strcmp(pos, "-f") == 0) {
@@ -316,10 +312,7 @@ int cutstr(char input[]) {
     makeHiddenFile(path2);
     if(strcmp(pos, "-b") == 0) {
         copyBackward(path2, line, character, size);
-        if(size <= character)
-            removeForward(path2, line, character - size, size);
-        else
-            removeBackward(path2, line, character, size - 1);
+        removeBackward(path2, line, character, size);
         return 1;
     }
     if(strcmp(pos, "-f") == 0) {
@@ -619,12 +612,10 @@ int grep(char input[]) {
     getFirstWord(input, pos);
     if(strcmp(pos, "-c") == 0) {
         option = 1;
-        if(arman_output == 0)
         getFirstWord(input, pos);
     }
     else if(strcmp(pos, "-l") == 0) {
         option = 2;
-        if(arman_output == 0)
         getFirstWord(input, pos);
     }
     int flag = -1;
@@ -635,11 +626,12 @@ int grep(char input[]) {
         if(getString(input, stringname, &flag) == 0) {
             return 0;
         }
+        getFirstWord(input, pos);
     }
     else {
         strcpy(stringname, arman_string);
     }
-    if(getFileName(input, pos, "--files") == 0) {
+    if(strcmp(pos, "--files")) {
         return 0;
     }
     int i = 0;
@@ -1114,193 +1106,197 @@ void readFile(char path[]) {
 }
 
 void removeForward(char path[], int line, int character, int size) {
-    char path2[1000];
-    int ch, counter = 0, isedited = 0, check = 1, ch2, flag, flag2 = 0;
-    FILE *firstfile = fopen(path, "r");
-    strcpy(path2, "./root/.temp.txt");
-    FILE *targetfile = fopen(path2, "w");
-    if(firstfile == NULL || targetfile == NULL) {
-        puts("the file doesn't exist");
-        return;
-    }
-    while((ch = fgetc(firstfile)) != EOF) {
-        if(ch == '\n') {
-            counter++;
-        }
-        if(counter == line - 1 && isedited == 0) {
-            if(line == 1 && character == 0) {
-                flag2 = 1;
-            }
-            if(counter > 0) {
-                fprintf(targetfile, "\n");
-            }
-            else if(character > 0) {
-                fprintf(targetfile, "%c", ch);
-            }
-            else {
-                ch2 = ch;
-                flag = 1;
-            }
-            
-            for(int j = 0 ; j < character - 1; j++) {
-                if(check == 1) {
-                    ch = fgetc(firstfile);
-                    if(ch == '\n' || ch == EOF) {
-                        check = 0;
-                    }
-                    if(check == 1)
-                        fprintf(targetfile, "%c", ch);
-                }
-                else{
-                    fclose(firstfile);
-                    fclose(targetfile);
-                    remove(path2);
-                    puts("there is not enough characters in your chosen line");
-                    return;
-                }
-            }
-            int i = 0;
-            if(flag2 == 1)
-                i = 1;
-            for( ; i < size; i++) {
-                ch = fgetc(firstfile);
-            }
-        
-            isedited = 1;
-            if(check == 1) {
-                while((ch = fgetc(firstfile)) != EOF) {
-                    fprintf(targetfile, "%c", ch);
-                    if(ch == '\n') {
-                        break;
-                    }
-                }
-            }
-            if(check == 0) {
-                fprintf(targetfile, "\n");
-            }
-        }
-        else{
-            fprintf(targetfile, "%c", ch);
-        }
-    }
-    fclose(targetfile);
-    fclose(firstfile);
-    remove(path);
-    rename(path2, path);
-}
-
-void removeBackward(char path[], int line, int character, int size) {
-    char path2[1000];
-    int ch, counter = 0, isedited = 0, check = 1, ch2, flag;
-    FILE *firstfile = fopen(path, "r");
-    strcpy(path2, "./root/.temp.txt");
-    FILE *targetfile = fopen(path2, "w");
-    if(firstfile == NULL || targetfile == NULL) {
-        puts("the file doesn't exist");
-        return;
-    }
-    while((ch = fgetc(firstfile)) != EOF) {
-        if(ch == '\n') {
-            counter++;
-        }
-        if(counter == line - 1 && isedited == 0) {
-            if(ch == '\n') {
-                ch = fgetc(firstfile);
-            }
-            fseek(firstfile, -1, SEEK_CUR);
-            for(int j = 0; j < character; j++) {
-                if(check == 1) {
-                    ch = fgetc(firstfile);
-                    if(ch == '\n' || ch == EOF) {
-                        check = 0;
-                    }
-                    if(check == 1)
-                    fprintf(targetfile, "%c", ch);
-                }
-                else{
-                    fclose(firstfile);
-                    puts("there is not enough characters in your chosen line");
-                    return;
-                }
-            }
-            fseek(targetfile, -size - 1, SEEK_CUR);
-            fprintf(targetfile, "\0");
-            if(flag == 1) {
-                fprintf(targetfile, "%c", ch2);
-            }
-            isedited = 1;
-            if(check == 1) {
-                while((ch = fgetc(firstfile)) != EOF) {
-                    fprintf(targetfile, "%c", ch);
-                    if(ch == '\n') {
-                        break;
-                    }
-                }
-            }
-            if(check == 0) {
-                fprintf(targetfile, "\n");
-            }
-        }
-        else{
-            fprintf(targetfile, "%c", ch);
-        }
-    }
-    fclose(targetfile);
-    fclose(firstfile);
-    remove(path);
-    rename(path2, path);
-}
-
-void copyForward(char path[], int line, int character, int size) {
-    int ch, counter = 0, isedited = 0, check = 1, flag = 0;
+int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
     FILE *firstfile = fopen(path, "r");
     if(firstfile == NULL) {
         puts("the file doesn't exist");
         return;
     }
     ch = fgetc(firstfile);
-    if(line == 1 && character == 0) {
-        clipboard[0] = ch;
-        flag = 1;
-    }
     while(ch != EOF) {
+        counter2++;
         if(ch == '\n') {
             counter++;
         }
         if(counter == line - 1 && isedited == 0) {
-            for(int j = 1; j < character; j++) {
+            for(int j = 0; j < character; j++) {
                 if(check == 1) {
                     ch = fgetc(firstfile);
+                    counter2++;
                     if(ch == '\n' || ch == EOF) {
                         check = 0;
                     }
                 }
-                else{
+                if(check == 0){
                     fclose(firstfile);
-                    clipboard[0] = 0;
                     puts("there is not enough characters in your chosen line");
                     return;
                 }
             }
-            int i = 0;
-            if(flag == 1)
-                i++;
-            for( ; i < size; i++) {
-                ch = fgetc(firstfile);
-                if(ch == EOF) {
-                    fclose(firstfile);
-                    clipboard[0] = 0;
-                    puts("your file is too short!");
-                    return;
-                }
-                clipboard[i] = ch;
-            }
-            clipboard[i] = 0;
             isedited = 1;
+            fclose(firstfile);
+            break;
         }
         ch = fgetc(firstfile);
     }
-    fclose(firstfile);
+    if(isedited == 0) {
+        puts("your file is too short!");
+        fclose(firstfile);
+    }
+    else if(counter2 < 0)  {
+        puts("your file is too short!");
+        return;
+    }
+    else {
+        int counter3 = 0;
+        char path2[100];
+        strcpy(path2, "./root/.temp.txt");
+        FILE *file = fopen(path, "r");
+        FILE *targetfile = fopen(path2, "w");
+        while(counter3 < counter2) {
+            ch = fgetc(file);
+            fprintf(targetfile, "%c", ch);
+            counter3++;
+        }
+        for(int i = 0; i < size; i++) {
+            ch = fgetc(file);
+        }
+        while((ch = fgetc(file)) != EOF) {
+            fprintf(targetfile, "%c", ch);
+        }
+        fclose(file);
+        fclose(targetfile);
+        remove(path);
+        rename(path2, path);
+    }
+}
+
+void removeBackward(char path[], int line, int character, int size) {
+int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
+    FILE *firstfile = fopen(path, "r");
+    if(firstfile == NULL) {
+        puts("the file doesn't exist");
+        return;
+    }
+    ch = fgetc(firstfile);
+    while(ch != EOF) {
+        counter2++;
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            for(int j = 0; j < character; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    counter2++;
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                }
+                if(check == 0){
+                    fclose(firstfile);
+                    puts("there is not enough characters in your chosen line");
+                    return;
+                }
+            }
+            isedited = 1;
+            fclose(firstfile);
+            break;
+        }
+        ch = fgetc(firstfile);
+    }
+    if(isedited == 0) {
+        puts("your file is too short!");
+        fclose(firstfile);
+    }
+    else if(counter2 - size < 0)  {
+        puts("your file is too short!");
+        return;
+    }
+    else {
+        int counter3 = 0;
+        char path2[100];
+        strcpy(path2, "./root/.temp.txt");
+        FILE *file = fopen(path, "r");
+        FILE *targetfile = fopen(path2, "w");
+        while(counter3 < counter2 - size) {
+            ch = fgetc(file);
+            fprintf(targetfile, "%c", ch);
+            counter3++;
+        }
+        for(int i = 0; i < size; i++) {
+            ch = fgetc(file);
+        }
+        while((ch = fgetc(file)) != EOF) {
+            fprintf(targetfile, "%c", ch);
+        }
+        fclose(file);
+        fclose(targetfile);
+        remove(path);
+        rename(path2, path);
+    }
+}
+
+void copyForward(char path[], int line, int character, int size) {
+    int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
+    FILE *firstfile = fopen(path, "r");
+    if(firstfile == NULL) {
+        puts("the file doesn't exist");
+        return;
+    }
+    ch = fgetc(firstfile);
+    while(ch != EOF) {
+        counter2++;
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            for(int j = 0; j < character; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    counter2++;
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                }
+                if(check == 0){
+                    fclose(firstfile);
+                    puts("there is not enough characters in your chosen line");
+                    return;
+                }
+            }
+            isedited = 1;
+            fclose(firstfile);
+            break;
+        }
+        ch = fgetc(firstfile);
+    }
+    if(isedited == 0) {
+        puts("your file is too short!");
+        fclose(firstfile);
+    }
+    else {
+        if(counter2 < 0) {
+            puts("your file is too short!");
+            return;
+        }
+        else{
+            FILE *file = fopen(path, "r");
+            ch = fgetc(file);
+            int counter3 = 0;
+            while(counter3 < counter2) {
+                counter3++;
+                ch = fgetc(file);
+            }
+            int i;
+            for(i = 0; i < size; i++) {
+                clipboard[i] = ch;
+                ch = fgetc(file);
+            }
+            clipboard[i] = 0;
+            fclose(file);
+        }
+    }
 }
 
 void copyBackward(char path[], int line, int character, int size) {
