@@ -597,8 +597,9 @@ int replace(char input[]) {
         num = findInFile(path2, arman_string, flag, 1, 0, 0, &size, &line);
     }
     if(num >= 0) {
-        removeForward(path2, 1, num, size);
-        writeToFile(path2, stringname2, 1, num);
+        makeHiddenFile(path2);
+        removeForward(path2, line, num, size);
+        writeToFile(path2, stringname2, line, num);
     }
     else{
         puts("couldn't find the string in your file");
@@ -1148,6 +1149,9 @@ int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
         return;
     }
     else {
+        if(line == 1) {
+            counter2--;
+        }
         int counter3 = 0;
         char path2[100];
         strcpy(path2, "./root/.temp.txt");
@@ -1214,6 +1218,9 @@ int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
         return;
     }
     else {
+        if(line == 1) {
+            counter2--;
+        }
         int counter3 = 0;
         char path2[100];
         strcpy(path2, "./root/.temp.txt");
@@ -1590,8 +1597,8 @@ void replaceAll(char* path, char* string, char* string2, int f) {
         puts("could't find any");
     }
     while(num >= 0) {
-        removeForward(path, 1, num, size);
-        writeToFile(path, string2, 1, num);
+        removeForward(path, line, num, size);
+        writeToFile(path, string2, line, num);
         num = findInFile(path, string, f, 1, 0, 0, &size, &line);
     }
 }
