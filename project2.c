@@ -13,6 +13,7 @@ int getInput(char*, WINDOW*, WINDOW*, WINDOW*);
 int openFile(char*, WINDOW*, WINDOW*, WINDOW*);
 int saveWithOldName(char*, WINDOW*, WINDOW*, WINDOW*);
 int saveWithNewName(char*, WINDOW*, WINDOW*, WINDOW*);
+void indentPhase2(WINDOW*);
 void undoTheChanges(WINDOW*);
 void cutOrCoppy(int, int, int, int, WINDOW*, int);
 void paste(int, int, WINDOW*);
@@ -248,6 +249,9 @@ int main() {
             }
             else if(ch == 'u') {
                 undoTheChanges(code);
+            }
+            else if(ch == '=') {
+                indentPhase2(code);
             }
             else if(ch == 'v') {
                 wclear(command);
@@ -1002,4 +1006,122 @@ void undoTheChanges(WINDOW* code) {
         showLines(path2, 1, file_line, code);
         saved = 1;
     }
+}
+
+void indent(char path[]) {
+    char path2[100] = "./root/temp.txt\0", ch;
+    int spacecounter = 0, tabcounter = 0, flag = 0, flag2 = 0, flag3 = 0;
+    FILE *firstfile = fopen(path, "r"); 
+    if(firstfile == NULL) {
+        puts("the file doesn't exist");
+        return;
+    }
+    FILE *targetfile = fopen(path2, "w");
+    ch = fgetc(firstfile);
+    while(ch != EOF) {
+        if(isspace(ch))
+            spacecounter++;
+        if(ch == '{') {
+            fseek(targetfile, -spacecounter, SEEK_CUR);
+            spacecounter = 0;
+            fprintf(targetfile, "\0");
+            if(flag2 == 1) 
+                fprintf(targetfile, " ");
+            else {
+                for(int i = 0; i < tabcounter; i++) {
+                    fprintf(targetfile, "    ");
+                }
+            }
+            flag2 = 0;
+            fprintf(targetfile, "%c\n", ch);
+            ch = fgetc(firstfile);
+            while(isspace(ch)) {
+                ch = fgetc(firstfile);
+            }
+            flag = 1;
+            flag3 = 1;
+            tabcounter++;
+        }
+        if(ch == '}') {
+            tabcounter--;
+            if(flag3 == 1)
+                spacecounter += 2;
+            fseek(targetfile, -spacecounter, SEEK_CUR);
+            fprintf(targetfile, "\0");
+            spacecounter = 0;
+            fprintf(targetfile,"\n");
+            for(int i = 0; i < tabcounter; i++) {
+                fprintf(targetfile,"    ");
+            }
+            fprintf(targetfile,"}");
+            while(isspace(ch)) {
+                ch = fgetc(firstfile);
+            }
+            flag2 = 0;
+            flag3 = 0;
+        }
+        if(ch == '}') {
+            ch = fgetc(firstfile);
+            continue;
+        }
+        else if(ch == '{')
+            continue;
+        if(flag == 1) {
+            for(int i = 0; i < tabcounter; i++) {
+                fprintf(targetfile,"    ");
+            }
+            flag = 0;
+        }
+        fprintf(targetfile, "%c", ch);
+        if(isspace(ch) == 0) {
+            spacecounter = 0;
+        }
+        if(isspace(ch) == 0 && ch != '{' && ch != '}') {
+            flag2 = 1;
+        }
+        if(ch != '{' && isspace(ch) == 0)
+            flag3 = 0;
+        if(ch == '\n') {
+            flag = 1;
+        }
+        ch = fgetc(firstfile);
+    }
+    fclose(firstfile);
+    fclose(targetfile);
+    remove(path);
+    rename(path2, path);
+}
+
+void indentPhase2(WINDOW* code) {
+    char temp[100];
+    strcpy(temp, "./root/temp1.txt");
+    FILE *file = fopen(temp, "w");
+    fclose(file);
+    move(0,2);
+    char the_line[100];
+    for(int i = 0; i < file_line; i++) {
+        for(int j = 0; j < number_of_chars[i + 1]; j++) {
+            char ch;
+            ch = mvwinch(code, i, j);
+            if(ch == '\0') {
+                break;
+            }
+            else if(ch != '\n') {
+                the_line[j] = ch;
+                the_line[j + 1] = '\n';
+                the_line[j + 2] = 0;
+            }
+            else {
+                break;
+            }
+        }
+        writeToFile(temp, the_line, i+1, 0);
+    }
+    indent(temp);
+    wclear(code);
+    wrefresh(code);
+    file_line = lineNumber(temp);
+    showLines(temp, 1, file_line, code);
+    wrefresh(code);
+    remove(temp);
 }
