@@ -17,6 +17,8 @@ void indentPhase2(WINDOW*);
 void undoTheChanges(WINDOW*);
 void cutOrCoppy(int, int, int, int, WINDOW*, int);
 void paste(int, int, WINDOW*);
+int newFind(char*, WINDOW*);
+int newReplace(char*, char*, WINDOW*, char*);
 void makeDirectory(const char*);
 int doesDirectoryExist(char*);
 void getFirstWord(char*, char*);
@@ -41,7 +43,7 @@ int pastestr(char*);
 int find(char*);
 int findInFile(char*, char*, int, int, int, int, int*, int*);
 void findAll(char*, char*, int, int);
-int replace(char*);
+int replace(char*, WINDOW*);
 void replaceAll(char*, char*, char*, int);
 int grep(char*);
 int simplegrep(char*, char*, int, int, char*);
@@ -162,6 +164,18 @@ int main() {
                 y2 = y;
                 flag = 1;
             }
+            else if(ch == '1') {
+                y = 0;
+                x = 2;
+                this_line = 1;
+                move(y, x);
+            }
+            else if(ch == '9') {
+                y = file_line - 1;
+                this_line = file_line;
+                x = number_of_chars[this_line] + 2;
+                move(y, x);
+            }
             else if(ch == 'd' && flag == 1) {
                 cutOrCoppy(x1 - 2, y1, x2 - 2, y2, code, 1);
                 wrefresh(code);
@@ -252,6 +266,18 @@ int main() {
             }
             else if(ch == '=') {
                 indentPhase2(code);
+            }
+            else if(ch == '1') {
+                y = 0;
+                x = 2;
+                this_line = 1;
+                move(y, x);
+            }
+            else if(ch == '9') {
+                y = file_line - 1;
+                this_line = file_line;
+                x = number_of_chars[this_line] + 2;
+                move(y, x);
             }
             else if(ch == 'v') {
                 wclear(command);
@@ -357,7 +383,8 @@ int main() {
 }
 
 int getInput(char input[], WINDOW *command, WINDOW *code, WINDOW *fileName) {
-    char word[1000];
+    char word[1000], word2[1000];
+    strcpy(word2, input);
     input_string[0] = 0;
     getFirstWord(input, word);
     if(strcmp(word, "open") == 0 && openFile(input, command, code, fileName) != 0) {
@@ -416,7 +443,7 @@ int getInput(char input[], WINDOW *command, WINDOW *code, WINDOW *fileName) {
         }
         return 1;
     }
-    else if(strcmp(word, "replace") == 0 && (replace(input) != 0)) {
+    else if(strcmp(word, "replace") == 0 && (replace(input, code) != 0)) {
         return 1;
     }
     else if(strcmp(word, "grep") == 0 && (grep(input) != 0)) {
@@ -466,11 +493,7 @@ int getInput(char input[], WINDOW *command, WINDOW *code, WINDOW *fileName) {
         return 1;
     }
     else {
-        move(28, 0);
-        wprintw(command, "invalid input(press enter)\n");
-        wgetch(command);
-        wclear(command);
-        wrefresh(command);
+        newFind(word2, code);
         return 0;
     }
 }
@@ -2222,6 +2245,7 @@ int armanFunction(char input[]) {
     char word[1000];
     arman = 0;
     arman_output = 1;
+    WINDOW *code = newwin(0, 0, 0, 0);
     getFirstWord(input, word);
     if(strcmp(word, "insertstr") == 0 && insertstr(input) != 0) {
         arman_output = 0;
@@ -2231,7 +2255,7 @@ int armanFunction(char input[]) {
         arman_output = 0;
         return 1;
     }
-    else if(strcmp(word, "replace") == 0 && replace(input) != 0) {
+    else if(strcmp(word, "replace") == 0 && replace(input, code) != 0) {
         arman_output = 0;
         return 1;
     }
@@ -2612,7 +2636,7 @@ int find(char input[]) {
     return 1;
 }
 
-int replace(char input[]) {
+int replace(char input[], WINDOW *code) {
     char filename[100], path[1000], stringname[1000], stringname2[1000], pos[100];
     int flag = -1;
     if(arman_output == 0) {
@@ -2630,7 +2654,10 @@ int replace(char input[]) {
     if(getString(input, stringname2, &flag2) == 0 || flag2 != -1) {
         return 0;
     }
+    char input2[1000];
+    strcpy(input2, input);
     if(getFileName(input, filename, "--file") == 0) {
+        newReplace(stringname, stringname2, code, input2);
         return 0;
     }
     if(getPath(input, path) == 0) {
@@ -2722,4 +2749,135 @@ void replaceAll(char* path, char* string, char* string2, int f) {
         writeToFile(path, string2, line, num);
         num = findInFile(path, string, f, 1, 0, 0, &size, &line);
     }
+}
+
+int newFind(char input[], WINDOW* code) {
+    char temp[100];
+    strcpy(temp, "./root/temp.txt");
+    FILE *file = fopen(temp, "w");
+    fclose(file);
+    move(0,2);
+    char the_line[100];
+    for(int i = 0; i < file_line; i++) {
+        for(int j = 0; j < number_of_chars[i + 1]; j++) {
+            char ch;
+            ch = mvwinch(code, i, j);
+            if(ch == '\0') {
+                break;
+            }
+            else if(ch != '\n') {
+                the_line[j] = ch;
+                the_line[j + 1] = '\n';
+                the_line[j + 2] = 0;
+            }
+            else {
+                break;
+            }
+        }
+        writeToFile(temp, the_line, i+1, 0);
+    }
+    char string[1000];
+    int flag = -1;
+    getString(input, string, &flag);
+    int i = 1;
+    int size, line = 1;
+    int num = findInFile(temp, string, -1, i, 0, 0, &size, &line);
+    init_pair(4, COLOR_BLACK, COLOR_YELLOW);
+    wattron(code, COLOR_PAIR(4));
+    while(num != -1) {
+        char ch;
+        for(int k = 0; k < size; k++) {
+            ch = mvwinch(code, line - 1, k + num);
+            mvwprintw(code, line - 1, k + num, "%c", ch);
+            wrefresh(code);
+        }
+        i++;
+        num = findInFile(temp, string, -1, i, 0, 0, &size, &line);
+    }
+    wattroff(code, COLOR_PAIR(4));
+    wrefresh(code);
+    remove(temp);
+    return 1;
+}
+
+int newReplace(char* string1, char* string2, WINDOW *code, char* input) {
+    char path2[1000], pos[100];
+    int flag = -1;
+    saved = 0;
+    strcpy(path2, "./root/temp.txt");
+    FILE *file = fopen(path2, "w");
+    fclose(file);
+    move(0,2);
+    char the_line[100];
+    for(int i = 0; i < file_line; i++) {
+        for(int j = 0; j < number_of_chars[i + 1]; j++) {
+            char ch;
+            ch = mvwinch(code, i, j);
+            if(ch == '\0') {
+                break;
+            }
+            else if(ch != '\n') {
+                the_line[j] = ch;
+                the_line[j + 1] = '\n';
+                the_line[j + 2] = 0;
+            }
+            else {
+                break;
+            }
+        }
+        writeToFile(path2, the_line, i+1, 0);
+    }
+    int size = 0;
+    getFirstWord(input, pos);
+    int num, line = 1;
+    if(strcmp(pos, "-at") == 0) {
+        int at;
+        sscanf(input, "%d%s", &at, pos);
+        if(strcmp(pos, "-all") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid option(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        if(arman_output == 0)
+        num = findInFile(path2, string1, flag, at, 0, 0, &size, &line);
+        else
+        num = findInFile(path2, arman_string, flag, at, 0, 0, &size, &line);
+    }
+    else if(strcmp(pos, "-all") == 0) {
+        getFirstWord(input, pos);
+        if(strcmp(pos, "-at") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid option(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        if(arman_output == 0)
+        replaceAll(path2, string1, string2, flag);
+        else
+        replaceAll(path2, arman_string, string1, flag);
+        return 1;
+    }
+    else {
+        if(arman_output == 0)
+        num = findInFile(path2, string1, flag, 1, 0, 0, &size, &line);
+        else 
+        num = findInFile(path2, arman_string, flag, 1, 0, 0, &size, &line);
+    }
+    if(num >= 0) {
+        makeHiddenFile(path2);
+        removeForward(path2, line, num, size);
+        writeToFile(path2, string2, line, num);
+    }
+    file_line = lineNumber(path2);
+    showLines(path2, 1, file_line, code);
+    wrefresh(code);
+    remove(path2);
+    return 1;
 }
