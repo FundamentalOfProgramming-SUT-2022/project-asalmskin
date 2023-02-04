@@ -30,8 +30,6 @@ void makeFile(char*);
 int insertstr(char*);
 void writeToFile(char*, char*,int, int);
 int checkPath(char*);
-int cat(char*);
-void readFile(char*);
 int removestr(char*);
 void removeForward(char*, int, int, int);
 void removeBackward(char*, int, int, int);
@@ -52,8 +50,6 @@ void makeHiddenPath(char*, char*);
 int undo(char*);
 int autoIndent(char*);
 void indent(char*);
-int compare(char*);
-void compareFiles(char*, char*);
 int lineNumber(char*);
 void printLines(char*, int);
 int tree(char*);
@@ -65,12 +61,15 @@ void showLines(char*, int, int, WINDOW*);
 
 int file_line = 0, saved = 1, this_line = 1, number_of_chars[50];
 int y = 0, x = 2;
+int phase1 = 0;
 char file_name[1000];
 char *clipboard;
 int arman = 0;
 int arman_output = 0;
 char arman_string[100000];
 char grep_string[100000];
+char input_string[100000];
+char input_file[25] = "./root/.input_file.txt";
 
 int main() {
     makeDirectory("./root");
@@ -114,6 +113,7 @@ int main() {
     int x2, y2, flag = 0;
     int ch;
     while(1) {
+        this_line = y + 1;
         if(y >= file_line) {
             y = 0;
             this_line = 1;
@@ -358,6 +358,7 @@ int main() {
 
 int getInput(char input[], WINDOW *command, WINDOW *code, WINDOW *fileName) {
     char word[1000];
+    input_string[0] = 0;
     getFirstWord(input, word);
     if(strcmp(word, "open") == 0 && openFile(input, command, code, fileName) != 0) {
         return 1;
@@ -366,22 +367,120 @@ int getInput(char input[], WINDOW *command, WINDOW *code, WINDOW *fileName) {
         return 1;
     }
     else if(strcmp(word, "saveas") == 0 && saveWithNewName(input, command, code, fileName) != 0) {
+        move(28, 0);
+        wprintw(command, "the file saved(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         return 1;
     }
     else if(strcmp(word, "undo") == 0 && strlen(input) == 0) {
         undoTheChanges(code);
         return 1;
     }
+    else if(strcmp(word, "createfile") == 0 && (createFile(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "insertstr") == 0 && (insertstr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "removestr") == 0 && (removestr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "copystr") == 0 && (copystr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "cutstr") == 0 && (cutstr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "pastestr") == 0 && (pastestr(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "find") == 0 && (find(input) != 0)) {
+        if(phase1 == 1) {
+            wclear(code);
+            wrefresh(code);
+            remove(input_file);
+            makeFile(input_file);
+            writeToFile(input_file, input_string, 1, 0);
+            file_line = lineNumber(input_file);
+            showLines(input_file, 1,file_line, code);
+            wrefresh(code);
+            file_name[0] = 0;
+            wattron(fileName, COLOR_PAIR(3));
+            mvwprintw(fileName, 0, 1, "                                  ");
+            wattroff(fileName, COLOR_PAIR(3));
+            wrefresh(fileName);
+            DWORD attributes = GetFileAttributes(input_file);
+            SetFileAttributes(input_file, attributes + FILE_ATTRIBUTE_HIDDEN);
+        }
+        return 1;
+    }
+    else if(strcmp(word, "replace") == 0 && (replace(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "grep") == 0 && (grep(input) != 0)) {
+        if(phase1 == 1) {
+            wclear(code);
+            wrefresh(code);
+            remove(input_file);
+            makeFile(input_file);
+            writeToFile(input_file, input_string, 1, 0);
+            file_line = lineNumber(input_file);
+            showLines(input_file, 1,file_line, code);
+            wrefresh(code);
+            file_name[0] = 0;
+            wattron(fileName, COLOR_PAIR(3));
+            mvwprintw(fileName, 0, 1, "                                  ");
+            wattroff(fileName, COLOR_PAIR(3));
+            wrefresh(fileName);
+            DWORD attributes = GetFileAttributes(input_file);
+            SetFileAttributes(input_file, attributes + FILE_ATTRIBUTE_HIDDEN);
+        }
+        return 1;
+    }
+    else if(strcmp(word, "undo") == 0 && (undo(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "auto-indent") == 0 && (autoIndent(input) != 0)) {
+        return 1;
+    }
+    else if(strcmp(word, "tree") == 0 && (tree(input) != 0)) {
+        if(phase1 == 1) {
+            wclear(code);
+            wrefresh(code);
+            remove(input_file);
+            makeFile(input_file);
+            writeToFile(input_file, input_string, 1, 0);
+            file_line = lineNumber(input_file);
+            showLines(input_file, 1,file_line, code);
+            wrefresh(code);
+            file_name[0] = 0;
+            wattron(fileName, COLOR_PAIR(3));
+            mvwprintw(fileName, 0, 1, "                                  ");
+            wattroff(fileName, COLOR_PAIR(3));
+            wrefresh(fileName);
+            DWORD attributes = GetFileAttributes(input_file);
+            SetFileAttributes(input_file, attributes + FILE_ATTRIBUTE_HIDDEN);
+        }
+        return 1;
+    }
     else {
+        move(28, 0);
+        wprintw(command, "invalid input(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         return 0;
     }
 }
 
 
 int openFile(char input[], WINDOW* command, WINDOW* code, WINDOW *fileName) {
-    if(file_line > 0 && saved == 0) {
+    if(file_line > 0 && saved == 0 && phase1 == 0) {
         saveWithOldName("\0", command, code, fileName);
     }
+    phase1 = 0;
     char path[1000];
     if(getPath(input, path) == 0) {
         return 0;
@@ -653,7 +752,12 @@ void writeToFile(char* path, char* string, int line, int character) {
     strcpy(path2, "./root/.temp.txt");
     FILE *targetfile = fopen(path2, "w");
     if(firstfile == NULL || targetfile == NULL) {
-        //puts("the file doesn't exist");
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file doesn't exist(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         return;
     }
     if(character == 0 && line == 1) {
@@ -682,7 +786,12 @@ void writeToFile(char* path, char* string, int line, int character) {
                         fprintf(targetfile, "%c", ch);
                 }
                 else{
-                    //puts("the line is too short");
+                    WINDOW *command = newwin(3, 100, 27, 0);
+                    move(28, 0);
+                    wprintw(command, "your file is too short(press enter)\n");
+                    wgetch(command);
+                    wclear(command);
+                    wrefresh(command);
                     fclose(firstfile);
                     fclose(targetfile);
                     remove(path2);
@@ -714,7 +823,12 @@ void writeToFile(char* path, char* string, int line, int character) {
         fclose(targetfile);
         fclose(firstfile);
         remove(path2);
-        //puts("your file is too short");
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "your file is too short(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         return;
     }
     else {
@@ -790,7 +904,12 @@ void copyForward(char path[], int line, int character, int size) {
     int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
     FILE *firstfile = fopen(path, "r");
     if(firstfile == NULL) {
-        puts("the file doesn't exist");
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file doesn't exists(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         return;
     }
     ch = fgetc(firstfile);
@@ -810,7 +929,12 @@ void copyForward(char path[], int line, int character, int size) {
                 }
                 if(check == 0){
                     fclose(firstfile);
-                    puts("there is not enough characters in your chosen line");
+                    WINDOW *command = newwin(3, 100, 27, 0);
+                    move(28, 0);
+                    wprintw(command, "there are not enough characters in your chosen line(press enter)\n");
+                    wgetch(command);
+                    wclear(command);
+                    wrefresh(command);
                     return;
                 }
             }
@@ -821,12 +945,22 @@ void copyForward(char path[], int line, int character, int size) {
         ch = fgetc(firstfile);
     }
     if(isedited == 0) {
-        puts("your file is too short!");
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "your file is too short(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         fclose(firstfile);
     }
     else {
         if(counter2 < 0) {
-            puts("your file is too short!");
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "your file is too short(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
             return;
         }
         else{
@@ -848,11 +982,16 @@ void copyForward(char path[], int line, int character, int size) {
     }
 }
 
-void removeForward(char path[], int line, int character, int size) {
-int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
+void copyBackward(char path[], int line, int character, int size) {
+    int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
     FILE *firstfile = fopen(path, "r");
     if(firstfile == NULL) {
-        puts("the file doesn't exist");
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file doesn't exists(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         return;
     }
     ch = fgetc(firstfile);
@@ -872,7 +1011,12 @@ int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
                 }
                 if(check == 0){
                     fclose(firstfile);
-                    puts("there is not enough characters in your chosen line");
+                    WINDOW *command = newwin(3, 100, 27, 0);
+                    move(28, 0);
+                    wprintw(command, "there are not enough characters in your chosen line(press enter)\n");
+                    wgetch(command);
+                    wclear(command);
+                    wrefresh(command);
                     return;
                 }
             }
@@ -883,11 +1027,103 @@ int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
         ch = fgetc(firstfile);
     }
     if(isedited == 0) {
-        puts("your file is too short!");
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "your file is too short(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        fclose(firstfile);
+    }
+    else {
+        if(counter2 - size < 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "your file is too short(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return;
+        }
+        else{
+            FILE *file = fopen(path, "r");
+            ch = fgetc(file);
+            int counter3 = 0;
+            while(counter3 < counter2 - size) {
+                counter3++;
+                ch = fgetc(file);
+            }
+            int i;
+            for(i = 0; i < size; i++) {
+                clipboard[i] = ch;
+                ch = fgetc(file);
+            }
+            clipboard[i] = 0;
+            fclose(file);
+        }
+    }
+}
+
+void removeForward(char path[], int line, int character, int size) {
+int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
+    FILE *firstfile = fopen(path, "r");
+    if(firstfile == NULL) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file does't exists(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return;
+    }
+    ch = fgetc(firstfile);
+    while(ch != EOF) {
+        counter2++;
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            for(int j = 0; j < character; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    counter2++;
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                }
+                if(check == 0){
+                    fclose(firstfile);
+                    WINDOW *command = newwin(3, 100, 27, 0);
+                    move(28, 0);
+                    wprintw(command, "there are not enough characters in your chosen line(press enter)\n");
+                    wgetch(command);
+                    wclear(command);
+                    wrefresh(command);
+                    return;
+                }
+            }
+            isedited = 1;
+            fclose(firstfile);
+            break;
+        }
+        ch = fgetc(firstfile);
+    }
+    if(isedited == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "your file is too short(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         fclose(firstfile);
     }
     else if(counter2 < 0)  {
-        puts("your file is too short!");
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "your file is too short(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
         return;
     }
     else {
@@ -900,6 +1136,95 @@ int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
         FILE *file = fopen(path, "r");
         FILE *targetfile = fopen(path2, "w");
         while(counter3 < counter2) {
+            ch = fgetc(file);
+            fprintf(targetfile, "%c", ch);
+            counter3++;
+        }
+        for(int i = 0; i < size; i++) {
+            ch = fgetc(file);
+        }
+        while((ch = fgetc(file)) != EOF) {
+            fprintf(targetfile, "%c", ch);
+        }
+        fclose(file);
+        fclose(targetfile);
+        remove(path);
+        rename(path2, path);
+    }
+}
+
+void removeBackward(char path[], int line, int character, int size) {
+int ch, counter = 0, isedited = 0, check = 1, flag = 0, counter2 = 0;
+    FILE *firstfile = fopen(path, "r");
+    if(firstfile == NULL) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file doesn't exist(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return;
+    }
+    ch = fgetc(firstfile);
+    while(ch != EOF) {
+        counter2++;
+        if(ch == '\n') {
+            counter++;
+        }
+        if(counter == line - 1 && isedited == 0) {
+            for(int j = 0; j < character; j++) {
+                if(check == 1) {
+                    ch = fgetc(firstfile);
+                    counter2++;
+                    if(ch == '\n' || ch == EOF) {
+                        check = 0;
+                    }
+                }
+                if(check == 0){
+                    fclose(firstfile);
+                    WINDOW *command = newwin(3, 100, 27, 0);
+                    move(28, 0);
+                    wprintw(command, "there are not enough characters in your chosen line(press enter)\n");
+                    wgetch(command);
+                    wclear(command);
+                    wrefresh(command);
+                    return;
+                }
+            }
+            isedited = 1;
+            fclose(firstfile);
+            break;
+        }
+        ch = fgetc(firstfile);
+    }
+    if(isedited == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "your file is too short(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        fclose(firstfile);
+    }
+    else if(counter2 - size < 0)  {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "your file is too short(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return;
+    }
+    else {
+        if(line == 1) {
+            counter2--;
+        }
+        int counter3 = 0;
+        char path2[100];
+        strcpy(path2, "./root/.temp.txt");
+        FILE *file = fopen(path, "r");
+        FILE *targetfile = fopen(path2, "w");
+        while(counter3 < counter2 - size) {
             ch = fgetc(file);
             fprintf(targetfile, "%c", ch);
             counter3++;
@@ -1124,4 +1449,1277 @@ void indentPhase2(WINDOW* code) {
     showLines(temp, 1, file_line, code);
     wrefresh(code);
     remove(temp);
+}
+
+int createFile(char input[]) {
+    char filename[100], path[1000];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    makeAllDirectories(path2);
+    makeFile(path2);
+    makeHiddenFile(path2);
+    return 1;
+}
+
+int getString(char input[], char path[], int *flagptr) {
+    if(input[0] == 0) {
+        return 0;
+    }
+    else if(input[0] == '\"') {
+        int i = 1, j = 0, counter = 1;
+        while (input[i] != '\"') {
+            if(input[i] == ' ') {
+                counter++;
+            }
+            path[j] = input[i];
+            if(input[i] == '\\' && input[i + 1] == '\"') {
+                path[j] = '\"';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] != '\\') {
+                path[j] = '\n';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] == '\\') {
+                path[j] = 'n';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == '*') {
+                path[j] = '*';
+                i++;
+            }
+            else if(input[i] == '*') {
+                *flagptr = j;
+                j--;
+            }
+            i++;
+            j++;
+        }
+        path[j] = 0;
+        char word[100];
+        for(int j = 0; j < counter; j++) {
+            getFirstWord(input, word);
+        }
+    }
+    else {
+        int i = 0, j = 0;
+        while (input[i] != 0 && input[i] != ' ') {
+            path[j] = input[i];
+            if(input[i] == '\\' && input[i + 1] == '\"') {
+                path[j] = '\"';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] != '\\') {
+                path[j] = '\n';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == 'n' && input[i - 1] == '\\') {
+                path[j] = 'n';
+                i++;
+            }
+            else if(input[i] == '\\' && input[i + 1] == '*') {
+                path[j] = '*';
+                i++;
+            }
+            else if(input[i] == '*') {
+                *flagptr = j;
+                j--;
+            }
+            i++;
+            j++;
+        }
+        path[j] = 0;
+        char word[100];
+        getFirstWord(input, word);
+    }
+    return 1;
+}
+
+int getFileName(char input[], char filename[], char str[]) {
+    if(input[0] == 0) {
+        return 0;
+    }
+    getFirstWord(input, filename);
+    if(strcmp(filename, str) == 0)
+        return 1;
+    return 0;
+}
+
+void makeAllDirectories(char* path) {
+    char new_path[200];
+    int i = 0;
+    while(path[i + 1] != 0) {
+        new_path[i] = path[i];
+        new_path[i + 1] = 0;
+        if(path[i + 1] == '/' && i > 1) {
+            makeDirectory(new_path);
+        }
+        i++;
+    }
+}
+
+void makeFile(char *path) {
+    FILE *file;
+    if(file = fopen(path, "r")) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file exists(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+    }
+    else {
+        FILE *myfile = fopen(path, "w");
+        fclose(myfile);
+    }
+}
+
+int insertstr(char *input) {
+    char filename[100], path[1000],stringname[1000], pos[100];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    if(arman_output == 0) {
+        if(getFileName(input, stringname, "--str") == 0) {
+            return 0;
+        }
+        int flag;
+        if(getString(input, stringname, &flag) == 0) {
+            return 0;
+        }
+    }
+    if(getFileName(input, pos, "--pos") == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    makeHiddenFile(path2);
+    if(arman_output == 0)
+    writeToFile(path2, stringname, line, character);
+    else
+    writeToFile(path2, arman_string, line, character);
+    return 1;
+}
+
+int removestr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    if(getFileName(input, pos, "--pos") == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    getFirstWord(input, pos);
+    if(getFileName(input, pos, "-size") == 0) {
+        return 0;
+    }
+    int size;
+    sscanf(input, "%d", &size);
+    getFirstWord(input, pos);
+    sscanf(input, "%s", pos);
+    makeHiddenFile(path2);
+    if(strcmp(pos, "-b") == 0) {
+        removeBackward(path2, line, character, size);
+        return 1;
+    }
+    if(strcmp(pos, "-f") == 0) {
+        removeForward(path2, line, character, size);
+        return 1;
+    }
+    return 0;
+}
+
+int copystr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    if(getFileName(input, pos, "--pos") == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    getFirstWord(input, pos);
+    if(getFileName(input, pos, "-size") == 0) {
+        return 0;
+    }
+    int size;
+    sscanf(input, "%d", &size);
+    free(clipboard);
+    clipboard = (char*)malloc(size);
+    getFirstWord(input, pos);
+    sscanf(input, "%s", pos);
+    if(strcmp(pos, "-b") == 0) {
+        copyBackward(path2, line, character, size);
+        clipboard[size] = 0;
+        return 1;
+    }
+    if(strcmp(pos, "-f") == 0) {
+        copyForward(path2, line, character, size);
+        return 1;
+    }
+    return 0;
+}
+
+int cutstr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    if(getFileName(input, pos, "--pos") == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    getFirstWord(input, pos);
+    if(getFileName(input, pos, "-size") == 0) {
+        return 0;
+    }
+    int size;
+    sscanf(input, "%d", &size);
+    free(clipboard);
+    clipboard = (char*)malloc(size);
+    getFirstWord(input, pos);
+    sscanf(input, "%s", pos);
+    makeHiddenFile(path2);
+    if(strcmp(pos, "-b") == 0) {
+        copyBackward(path2, line, character, size);
+        removeBackward(path2, line, character, size);
+        return 1;
+    }
+    if(strcmp(pos, "-f") == 0) {
+        copyForward(path2, line, character, size);
+        removeForward(path2, line, character, size);
+        return 1;
+    }
+    return 0;
+}
+
+int pastestr(char input[]) {
+    char filename[100], path[1000], pos[100];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    if(getFileName(input, pos, "--pos") == 0) {
+        return 0;
+    }
+    int line, character;
+    sscanf(input, "%d%*[^0123456789]%d", &line, &character);
+    makeHiddenFile(path2);
+    writeToFile(path2, clipboard, line, character);
+    return 1;
+    
+}
+
+int undo(char input[]) {
+    char filename[100], path[1000];
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    FILE *file = fopen(path2, "r");
+    if(file == NULL) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file doesn't exists(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    fclose(file);
+    makeHiddenPath(path2, path);
+    remove(path2);
+    rename(path, path2);
+    DWORD attributes = GetFileAttributes(path2);
+    SetFileAttributes(path2, attributes - FILE_ATTRIBUTE_HIDDEN);
+    makeHiddenFile(path2);
+    return 1;
+}
+
+int autoIndent(char input[]) {
+    char path[1000];
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    makeHiddenFile(path2);
+    indent(path2);
+    return 1;
+}
+
+int grep(char input[]) {
+    char pos[1000], stringname[1000], path[1000], path2[1000], temp[1000];
+    int option = 0;
+    getFirstWord(input, pos);
+    if(strcmp(pos, "-c") == 0) {
+        option = 1;
+        getFirstWord(input, pos);
+    }
+    else if(strcmp(pos, "-l") == 0) {
+        option = 2;
+        getFirstWord(input, pos);
+    }
+    int flag = -1;
+    if(arman_output == 0) {
+        if(strcmp(pos, "--str") != 0) {
+            return 0;
+        }
+        if(getString(input, stringname, &flag) == 0) {
+            return 0;
+        }
+        getFirstWord(input, pos);
+    }
+    else {
+        strcpy(stringname, arman_string);
+    }
+    if(strcmp(pos, "--files")) {
+        return 0;
+    }
+    int i = 0;
+    int l = strlen(input), counter = 0;
+    input[l] = 0;
+    while(1) {
+        if(getPath(input, path) == 0) {
+            break;
+        }
+        if(strcmp(path, "=D") == 0) {
+            arman = 1;
+            arman_string[0] = 0;
+            strcat(arman_string, grep_string);
+            grep_string[0] = 0;
+            break;
+        }
+        path2[0] = '.';
+        path2[1] = 0;
+        strcat(path2,(const char*)path);
+        if(checkPath(path2) == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid path(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        i++;
+        int num = simplegrep(path2, stringname, flag, option, path);
+        counter += num;
+        if(option == 2 && num > 0) {
+            sprintf(temp, "%s\n", path);
+            if(arman == 0)
+            strcat(grep_string, temp);
+            else
+            strcat(arman_string, temp);
+        }
+        if(num == -1)
+            return 1;
+    }
+    if(counter == 0) {
+        if(arman == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "couldn't find any(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+        }
+        else
+            sprintf(arman_string, "couldn't find any\n");
+    }
+    else if(option == 1) {
+        if(arman == 0) {
+            sprintf(input_string, "%d\n", counter);
+            phase1 = 1;
+            saved = 0;
+        }
+        else
+            sprintf(arman_string, "%d\n", counter);
+    }
+    else if (arman == 0) {
+        strcpy(input_string, grep_string);
+        phase1 = 1;
+        saved = 0;
+    }
+    if(arman == 1 && armanFunction(input) == 0)
+        return 0;
+    return 1;
+}
+
+int simplegrep(char path[], char string[], int flag, int option, char path2[]) {
+    int counter = 0, size = 0, line = -1, line2, ch, at = 1;
+    int num = findInFile(path, string, flag, at, 0, 0, &size, &line);
+    line2 = -1;
+    while(num >= 0) {
+        if(line != line2) {
+            counter++;
+            if(option == 0) {
+                printLine(line, path, path2);
+            }
+            if(option == 2) {
+                return 1;
+            }
+        }
+        at++;
+        line2 = line;
+        num = findInFile(path, string, flag, at, 0, 0, &size, &line);
+    }
+    return counter;
+}
+
+void printLines(char path[], int first) {
+    FILE *file = fopen(path, "r");
+    int counter = 0;
+    char line[1000], temp[1000];
+    while(fgets(line, sizeof(line), file) != NULL) {
+        counter++;
+        if(counter >= first) {
+            if(arman == 0)
+                printf("%s", line);
+            else {
+                sprintf(temp, "%s", line);
+                strcat(arman_string, temp);
+            }
+        }
+    }
+    if(arman == 0)
+    printf("\n");
+    else
+    strcat(arman_string, "\n");
+    fclose(file);
+}
+
+void printLine(int line, char path[], char path2[]) {
+    FILE *file = fopen(path, "r");
+    if(file == NULL) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "the file doesn't exist(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+        arman = 0;
+        return;
+    }
+    int counter = 0;
+    char line_string[1000], temp[1000];
+    while(fgets(line_string, sizeof(line_string), file) != NULL) {
+        counter++;
+        if(counter == line) {
+            sprintf(temp, "%s: %s", path2, line_string);
+            if(arman == 0)
+                strcat(grep_string, temp);
+            else
+                strcat(arman_string, temp);
+            if(line == lineNumber(path)) {
+                sprintf(temp, "\n");
+                if(arman == 0)
+                    strcat(grep_string, temp);
+                else
+                    strcat(arman_string, temp);
+            }
+            fclose(file);
+            return;
+        }
+    }
+}
+
+int findInFile(char path[], char string[], int f,
+               int at, int count, int byword, int *sizeptr, int *lineptr) {
+    int counter = 0, flag = 0, i = 0,ans = -1, flag3 = 0, flag4 = 0;
+    int l = strlen(string), match = 0, lastword = 0, lastans = -1;
+    char ch;
+    int something = 0, line = 1;
+    FILE *myfile = fopen(path, "r");
+    if(myfile == NULL) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "the file doesn't exist(press enter)\n");
+        wclear(command);
+        wrefresh(command);
+        return -2;
+    }
+    ch = fgetc(myfile);
+    while(i < l) {
+        counter++;
+        if(ch == ' ') {
+            lastword = counter;
+        }
+        if(f == i && string[i] != ' ' && string[i] != 0 && something == 0) {
+            int flag2 = 0;
+            int k = i;
+            if(i == 0) {
+                ans = lastword;
+            }
+            while(ch != ' ' && ch != EOF) {
+                if(string[k] == 0 || string[k] == ' ') {
+                    if(flag2 == 1)
+                        flag2 = 2;
+                    break;
+                }
+                if(string[k] == ch) {
+                    flag2 = 1;
+                    k++;
+                }
+                else{
+                    k = i;
+                    flag2 = 0;
+                }
+                ch = fgetc(myfile);
+                counter++;
+                (*sizeptr)++;
+            }
+            if(flag2 == 2) {
+                while(ch != ' ' && ch != EOF) {
+                    ch = fgetc(myfile);
+                    (*sizeptr)++;
+                    counter++;
+                }
+            }
+            if(ch == ' ' || ch == EOF) {
+                lastword = counter;
+            }
+            if(flag2 != 0) {
+                i = k;
+                flag = 1;
+                something = 1;
+                if(string[i] == ' ') {
+                    counter--;
+                    fseek(myfile, -1, SEEK_CUR);
+                }
+            }
+            else {
+                flag = 0;
+                i = 0;
+                (*sizeptr) = 0;
+            }
+        }
+        
+        else if(string[i] == ch) {
+            if(i == 0) {
+                if(f != 0)
+                    ans = counter - 1;
+                else
+                    ans = lastword;
+                if(ans != counter - 1) {
+                    (*sizeptr) += counter - lastword - 1;
+                }
+            }
+            flag = 1;
+            i++;
+            (*sizeptr)++;
+        }
+        else if(i != f){
+            flag = 0;
+            if(f >= 0 && (string[f] != 0 && string[f] != ' ')) {
+                fseek(myfile, -i, SEEK_CUR);
+                counter -= i;
+            }
+            else {
+                fseek(myfile, -i, SEEK_CUR);
+                counter -= i;
+            }
+            i = 0;
+            (*sizeptr) = 0;
+            something = 0;
+        }
+        if(flag == 1 && f == i && (string[i] == ' ' || string[i] == 0) && flag4 == 0) {
+            flag4 = 1;
+            while(ch != ' ' && ch != EOF) {
+                counter++;
+                ch = fgetc(myfile);
+                (*sizeptr)++;
+            }
+            if(ch == ' ') {
+                lastword = counter;
+            }
+            fseek(myfile, -1, SEEK_CUR);
+            (*sizeptr)--;
+            counter--;
+        }
+        if(i >= l && flag == 1) {
+            flag = 0;
+            i = 0;
+            flag4 = 0;
+            if(lastans == ans) {
+                continue;
+            }
+            something = 1;
+            match++;
+            lastans = ans;
+            if(match == at && count == 0) {
+                *lineptr = line;
+                fclose(myfile);
+                return ans;
+            }
+            else {
+                (*sizeptr) = 0;
+            }
+        }
+        if(ch == EOF)
+            break;
+        if(ch == '\n') {
+            line++;
+            counter = 0, flag = 0, i = 0;
+            ans = -1, flag3 = 0, flag4 = 0;
+            lastword = 0, lastans = -1;
+            (*sizeptr) = 0;
+        }
+        ch = fgetc(myfile);
+    }
+    if(count == 1) {
+        fclose(myfile);
+        return match;
+    }
+    int counter2;
+    if(byword == 1 && flag3 == 1) {
+        return bywordCounter(path, ans, *lineptr);
+    }
+    fclose(myfile);
+    return -1;
+}
+
+int bywordCounter(char path[], int ans, int line) {
+    FILE *myfile = fopen(path, "r");
+    if(myfile == NULL) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "the file doesn't exist(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+        return -2;
+    }
+    int ch;
+    char counter2 = 0;
+    int flag = 0;
+    int linecounter = 1;
+    while(1) {
+        ch = fgetc(myfile);
+        if(linecounter == line) {
+            for(int j = 0; j < ans; j++) {
+                if(ch == ' '&& flag == 0) {
+                    flag = 1;
+                    counter2++;
+                }
+                else if (ch != ' '){
+                    flag = 0;
+                }
+                ch = fgetc(myfile);
+            }
+            break;
+        } 
+        if(ch == '\n') {
+            linecounter++; 
+        }
+    }
+    fclose(myfile);
+    return counter2;
+}
+
+int armanFunction(char input[]) {
+    char word[1000];
+    arman = 0;
+    arman_output = 1;
+    getFirstWord(input, word);
+    if(strcmp(word, "insertstr") == 0 && insertstr(input) != 0) {
+        arman_output = 0;
+        return 1;
+    }
+    else if(strcmp(word, "find") == 0 && find(input) != 0) {
+        arman_output = 0;
+        return 1;
+    }
+    else if(strcmp(word, "replace") == 0 && replace(input) != 0) {
+        arman_output = 0;
+        return 1;
+    }
+    else if(strcmp(word, "grep") == 0 && grep(input) != 0) {
+        arman_output = 0;
+        return 1;
+    }
+    arman_output = 0;
+    return 0;
+}
+
+int tree(char input[]) {
+    int depth;
+    char pos[1000];
+    sscanf(input, "%d %s", &depth, pos);
+    if(strcmp(pos, "=D") == 0) {
+        arman = 1;
+        arman_string[0] = 0;
+        getFirstWord(input, pos);
+        getFirstWord(input, pos);
+    }
+    if(depth < -1) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    if(arman == 0) {
+    sprintf(input_string, "root:\n");
+    phase1 = 1; 
+    saved = 0;
+    }
+    else
+    sprintf(arman_string, "root:\n");
+    listDir("./root", depth, 1);
+    if(arman == 1 && armanFunction(input) == 0) {
+        return 0;
+    }
+    return 1;
+}
+
+static void listDir(const char *path, int depth, int level) {
+    char temp[1000];
+    if(depth != -1 && level > depth)
+        return;
+    struct dirent *entry;
+    DIR *dir = opendir(path);
+    if (dir == NULL) {
+        return;
+    }
+    while((entry = readdir(dir)) != NULL) {
+        if(entry->d_name[0] != '.') {
+            for(int i = 1; i < level; i++) {
+                if(arman == 0)
+                strcat(input_string, "| ");
+                else
+                strcat(arman_string, "| ");
+            }
+            if(arman == 0) {
+            sprintf(temp, "|---- %s",entry->d_name);
+            strcat(input_string, temp);
+            }
+            else {
+            sprintf(temp, "|---- %s",entry->d_name);
+            strcat(arman_string, temp);
+            }
+            if(entry->d_type == DT_DIR) {
+                if(arman == 0)
+                strcat(input_string, ":\n");
+                else
+                strcat(arman_string, ":\n");
+                char path2[1000];
+                strcpy(path2, path);
+                strcat(path2, "/");
+                strcat(path2, entry->d_name);
+                listDir(path2, depth, level + 1);
+            }
+            else{
+                if(arman == 0)
+                strcat(input_string, "\n");
+                else
+                strcat(arman_string, "\n");
+            }
+        }
+    }
+    closedir(dir);
+}
+
+void findAll(char path[], char string[], int f, int byword) {
+    char temp[1000];
+    int i = 1;
+    int size, line = 1;
+    int num = findInFile(path, string, f, i, 0, byword, &size, &line);
+    if(num == -1) {
+        if(arman == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "couldn't find any(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+        }
+        else 
+        sprintf(arman_string, "couldn't find any\n");
+    }
+    else {
+        while (num != -1) {
+            if(byword == 1) {
+            num = bywordCounter(path, num, line);
+            }
+            if(arman == 0)
+                printf("%d:%d", line, num);
+            else {
+                sprintf(temp, "%d:%d", line, num);
+                strcat(arman_string, temp);
+            }
+            i++;
+            num = findInFile(path, string, f, i, 0, byword, &size, &line);
+            if(num != -1) {
+                if(arman == 0) {
+                    sprintf(temp, ", ");
+                    strcat(input_string, temp);
+                }
+                else {
+                    sprintf(temp, ", ");
+                    strcat(arman_string, temp);
+                }
+            }
+        }
+        if(arman == 0) {
+            sprintf(temp, "\n");
+            strcat(input_string, temp);
+        }
+        else {
+            sprintf(temp, "\n");
+            strcat(arman_string, temp);
+        }
+    }
+}
+
+int find(char input[]) {
+    char filename[100], path[1000],stringname[1000], pos[100];
+    int size, flag = -1, byword = 0;
+    if(arman_output == 0) {
+        if(getFileName(input, stringname, "--str") == 0) {
+            return 0;
+        }
+        if(getString(input, stringname, &flag) == 0) {
+            return 0;
+        }
+    }
+    else {
+        strcpy(stringname, arman_string);
+    }
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    makeHiddenFile(path2);
+    getFirstWord(input, pos);
+    int num, line = 1;
+    if(strcmp(pos, "-at") == 0) {
+        int at;
+        char arman_check[1000];
+        sscanf(input, "%d%s%s", &at, pos, arman_check);
+        if(strcmp(pos, "-byword") == 0) {
+            byword = 1;
+            if(strcmp(arman_check, "=D") == 0) {
+                arman = 1;
+                arman_string[0] = 0;
+                for(int i = 0; i < 3; i++)
+                    getFirstWord(input, path);
+            }
+            else if(strcmp(arman_check, "-count") == 0) {
+                WINDOW *command = newwin(3, 100, 27, 0);
+                move(28, 0);
+                wprintw(command, "invalid options(press enter)\n");
+                wgetch(command);
+                wclear(command);
+                wrefresh(command);
+                return 1;
+            }
+            else if(strcmp(arman_check, "-all") == 0) {
+                WINDOW *command = newwin(3, 100, 27, 0);
+                move(28, 0);
+                wprintw(command, "invalid options(press enter)\n");
+                wgetch(command);
+                wclear(command);
+                wrefresh(command);
+                return 1;
+            }
+            num = findInFile(path2, stringname, flag, at, 0, 1, &size, &line);
+        }
+        else if(strcmp(pos, "-count") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+                move(28, 0);
+                wprintw(command, "invalid options(press enter)\n");
+                wgetch(command);
+                wclear(command);
+                wrefresh(command);
+            return 1;
+        }
+        else if(strcmp(pos, "-all") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid options(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        else {
+            if(strcmp(pos, "=D") == 0) {
+                arman = 1;
+                arman_string[0] = 0;
+                for(int i = 0; i < 2; i++)
+                getFirstWord(input, pos);
+            }
+            num = findInFile(path2, stringname, flag, at, 0, 0, &size, &line);
+        }
+    }
+    else if(strcmp(pos, "-count") == 0) {
+        getFirstWord(input, pos);
+        if(strcmp(pos, "at") == 0 || strcmp(pos, "-all") == 0 || strcmp(pos, "-byword") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid options(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        else if(strcmp(pos, "=D") == 0) {
+            arman = 1;
+            arman_string[0] = 0;
+            getFirstWord(input, path);
+        }
+        num = findInFile(path2, stringname, flag, 1, 1, 0, &size, &line);
+    }
+    else if(strcmp(pos, "-byword") == 0) {
+        byword = 1;
+        int at;
+        char arman_check[1000];
+        sscanf(input, "%s", pos);
+        if(strcmp(pos, "-count") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid options(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        else if(strcmp(pos, "-at") == 0) {
+            sscanf(input, "%s %d%s", pos, &at, arman_check);
+            if(strcmp(arman_check, "-all") == 0 || strcmp(arman_check, "-count") == 0) {
+                WINDOW *command = newwin(3, 100, 27, 0);
+                move(28, 0);
+                wprintw(command, "invalid options(press enter)\n");
+                wgetch(command);
+                wclear(command);
+                wrefresh(command);
+                return 1;
+            }
+            else if(strcmp(arman_check, "=D") == 0) {
+                for(int i = 0; i < 3; i++)
+                    getFirstWord(input, path);
+                arman = 1;
+                arman_string[0] = 0;
+            }
+            num = findInFile(path2, stringname, flag, at, 0, 1, &size, &line);
+        }
+        else if(strcmp(pos, "-all") == 0) {
+            sscanf(input, "%s %d %s", pos, &at, arman_check);
+            if(strcmp(arman_check, "=D") == 0) {
+                for(int i = 0; i < 2; i++)
+                    getFirstWord(input, path);
+                arman = 1;
+                arman_string[0] = 0;
+            }
+            findAll(path2, stringname, flag, 1);
+            if(arman == 1 && armanFunction(input) == 0)
+                return 0;
+            return 1;
+        }
+        else {
+            if(strcmp(pos, "=D") == 0) {
+                getFirstWord(input, path);
+                arman = 1;
+                arman_string[0] = 0;
+            }
+            num = findInFile(path2, stringname, flag, 1, 0, 1, &size, &line);
+        }
+    }
+    else if(strcmp(pos, "-all") == 0) {
+        char arman_check[1000];
+        sscanf(input, "%s %s", pos, arman_check);
+        if(strcmp(pos, "-count") == 0 || strcmp(pos, "-at") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid options(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        else if(strcmp(pos, "-byword") == 0) {
+            byword = 1;
+            if(strcmp(arman_check, "-at") == 0 || strcmp(arman_check, "-count") == 0) {
+                WINDOW *command = newwin(3, 100, 27, 0);
+                move(28, 0);
+                wprintw(command, "invalid options(press enter)\n");
+                wgetch(command);
+                wclear(command);
+                wrefresh(command);
+                return 1;
+            }
+            else if(strcmp(arman_check, "=D") == 0) {
+                for(int i = 0; i < 2; i++)
+                    getFirstWord(input, path);
+                arman = 1;
+                arman_string[0] = 0;
+            }
+            findAll(path2, stringname, flag, 1);
+            if(arman == 1 && armanFunction(input) == 0)
+                return 0;
+            return 1;
+        }
+        else {
+            if(strcmp(pos, "=D") == 0) {
+                getFirstWord(input, path);
+                arman = 1;
+                arman_string[0] = 0;
+            }
+            findAll(path2, stringname, flag, 0);
+            if(arman == 1 && armanFunction(input) == 0)
+                return 0;
+            return 1;
+        }
+    }
+    else {
+        if(strcmp(pos, "=D") == 0) {
+            arman = 1;
+            arman_string[0] = 0;
+        }
+        num = findInFile(path2, stringname, flag, 1, 0, 0, &size, &line);
+    }
+    if(num >= -1) {
+        if(byword == 1) {
+            num = bywordCounter(path2, num, line);
+        }
+        if(arman == 0) {
+            sprintf(input_string, "%d:%d\n", line, num);
+            phase1 = 1;
+            saved = 0;
+        }
+        else
+            sprintf(arman_string, "%d:%d\n", line, num);
+        if(arman == 1 && armanFunction(input) == 0)
+            return 0;
+    }
+    return 1;
+}
+
+int replace(char input[]) {
+    char filename[100], path[1000], stringname[1000], stringname2[1000], pos[100];
+    int flag = -1;
+    if(arman_output == 0) {
+        if(getFileName(input, stringname, "--str1") == 0) {
+            return 0;
+        }
+        if(getString(input, stringname, &flag) == 0) {
+            return 0;
+        }
+    }
+    if(getFileName(input, pos, "--str2") == 0) {
+        return 0;
+    }
+    int flag2 = -1;
+    if(getString(input, stringname2, &flag2) == 0 || flag2 != -1) {
+        return 0;
+    }
+    if(getFileName(input, filename, "--file") == 0) {
+        return 0;
+    }
+    if(getPath(input, path) == 0) {
+        return 0;
+    }
+    char path2[1000] = ".";
+    strcat(path2, path);
+    if(checkPath(path2) == 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "invalid path(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+        return 1;
+    }
+    int size = 0;
+    getFirstWord(input, pos);
+    int num, line = 1;
+    if(strcmp(pos, "-at") == 0) {
+        int at;
+        sscanf(input, "%d%s", &at, pos);
+        if(strcmp(pos, "-all") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid option(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        if(arman_output == 0)
+        num = findInFile(path2, stringname, flag, at, 0, 0, &size, &line);
+        else
+        num = findInFile(path2, arman_string, flag, at, 0, 0, &size, &line);
+    }
+    else if(strcmp(pos, "-all") == 0) {
+        getFirstWord(input, pos);
+        if(strcmp(pos, "-at") == 0) {
+            WINDOW *command = newwin(3, 100, 27, 0);
+            move(28, 0);
+            wprintw(command, "invalid option(press enter)\n");
+            wgetch(command);
+            wclear(command);
+            wrefresh(command);
+            return 1;
+        }
+        if(arman_output == 0)
+        replaceAll(path2, stringname, stringname2, flag);
+        else
+        replaceAll(path2, arman_string, stringname2, flag);
+        return 1;
+    }
+    else {
+        if(arman_output == 0)
+        num = findInFile(path2, stringname, flag, 1, 0, 0, &size, &line);
+        else 
+        num = findInFile(path2, arman_string, flag, 1, 0, 0, &size, &line);
+    }
+    if(num >= 0) {
+        makeHiddenFile(path2);
+        removeForward(path2, line, num, size);
+        writeToFile(path2, stringname2, line, num);
+    }
+    else{
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "couldn't find the string in your file(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+    }
+    return 1;
+}
+
+void replaceAll(char* path, char* string, char* string2, int f) {
+    int size = 0, line = 1;
+    int num = findInFile(path, string, f, 1, 1, 0, &size, &line);
+    if(num <= 0) {
+        WINDOW *command = newwin(3, 100, 27, 0);
+        move(28, 0);
+        wprintw(command, "couldn't find the string in your file(press enter)\n");
+        wgetch(command);
+        wclear(command);
+        wrefresh(command);
+    }
+    while(num >= 0) {
+        removeForward(path, line, num, size);
+        writeToFile(path, string2, line, num);
+        num = findInFile(path, string, f, 1, 0, 0, &size, &line);
+    }
 }
