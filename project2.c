@@ -13,6 +13,7 @@ int getInput(char*, WINDOW*, WINDOW*, WINDOW*);
 int openFile(char*, WINDOW*, WINDOW*, WINDOW*);
 int saveWithOldName(char*, WINDOW*, WINDOW*, WINDOW*);
 int saveWithNewName(char*, WINDOW*, WINDOW*, WINDOW*);
+void undoTheChanges(WINDOW*);
 void cutOrCoppy(int, int, int, int, WINDOW*, int);
 void paste(int, int, WINDOW*);
 void makeDirectory(const char*);
@@ -62,6 +63,7 @@ int bywordCounter(char*, int, int);
 void showLines(char*, int, int, WINDOW*);
 
 int file_line = 0, saved = 1, this_line = 1, number_of_chars[50];
+int y = 0, x = 2;
 char file_name[1000];
 char *clipboard;
 int arman = 0;
@@ -107,11 +109,15 @@ int main() {
     }
     wattroff(mainwin, COLOR_PAIR(2));
     wrefresh(mainwin);
-    int y = 0, x = 2;
     int y1 = 0, x1 = 2;
     int x2, y2, flag = 0;
     int ch;
     while(1) {
+        if(y >= file_line) {
+            y = 0;
+            this_line = 1;
+            x = 2;
+        }
         wattron(mainwin, COLOR_PAIR(0));
         for(int i = 0; i < file_line; i++) {
             wmove(mainwin, i, 0);
@@ -158,6 +164,7 @@ int main() {
             else if(ch == 'd' && flag == 1) {
                 cutOrCoppy(x1 - 2, y1, x2 - 2, y2, code, 1);
                 wrefresh(code);
+                saved = 0;
                 x = 2;
                 y = 0;
                 ch = 27;
@@ -235,9 +242,12 @@ int main() {
                 }
                 for(int i = file_line; i < 23; i++) {
                     wmove(mainwin, i, 0);
-                    wprintw(mainwin, "~");
+                    wprintw(mainwin, "~ ");
                 }
                 wrefresh(mainwin);
+            }
+            else if(ch == 'u') {
+                undoTheChanges(code);
             }
             else if(ch == 'v') {
                 wclear(command);
@@ -329,7 +339,7 @@ int main() {
         wattron(mainwin, COLOR_PAIR(2));
         for(int i = file_line; i < 23; i++) {
             wmove(mainwin, i, 0);
-            wprintw(mainwin, "~");
+            wprintw(mainwin, "~ ");
         }
         wattroff(mainwin, COLOR_PAIR(2));
         wrefresh(mainwin);
@@ -352,6 +362,10 @@ int getInput(char input[], WINDOW *command, WINDOW *code, WINDOW *fileName) {
         return 1;
     }
     else if(strcmp(word, "saveas") == 0 && saveWithNewName(input, command, code, fileName) != 0) {
+        return 1;
+    }
+    else if(strcmp(word, "undo") == 0 && strlen(input) == 0) {
+        undoTheChanges(code);
         return 1;
     }
     else {
@@ -455,6 +469,7 @@ int saveWithOldName(char input[], WINDOW* command, WINDOW* code, WINDOW *fileNam
             }
             writeToFile(temp, the_line, i+1, 0);
         }
+        makeHiddenFile(path2);
         remove(path2);
         rename(temp, path2);
         saved = 1;
@@ -502,6 +517,7 @@ int saveWithNewName(char input[], WINDOW* command, WINDOW* code, WINDOW *fileNam
             }
             writeToFile(temp, the_line, i+1, 0);
         }
+        makeHiddenFile(path2);
         remove(path2);
         rename(temp, path2);
         saved = 1;
@@ -616,8 +632,8 @@ void showLines(char path[], int first, int last, WINDOW* code) {
             move(counter - 1, 2);
             wprintw(code, "%s", current_line);
             number_of_chars[counter] = strlen(current_line);
-            if(counter != last) {
-            number_of_chars[counter]--;
+            if(counter != file_line) {
+                number_of_chars[counter]--;
             }
         }
     }
@@ -928,4 +944,62 @@ void paste(int y, int x, WINDOW* code) {
     wrefresh(code);
     showLines(temp, 1, file_line, code);
     remove(temp);
+}
+
+void makeHiddenPath(char path[], char path2[]) {
+    int l = strlen(path), counter = 0;
+    for(int i = 0; i < l; i++) {
+        if(path[i] == '/')
+            counter = i;
+    }
+    int i;
+    for(i = 0; i <= counter; i++) {
+        path2[i] = path[i];
+    }
+    path2[i] = '.';
+    for(i = counter + 1; i < l; i++) {
+        path2[i + 1] = path[i];
+    }
+    path2[i + 1] = 0;
+}
+
+int makeHiddenFile(char path[]) {
+    char path2[1000], ch;
+    makeHiddenPath(path, path2);
+    remove(path2);
+    FILE *firstfile = fopen(path, "r");
+    FILE *targetfile = fopen(path2, "w");
+    if(firstfile == NULL)
+        return 0;
+    while((ch = fgetc(firstfile)) != EOF)
+        fprintf(targetfile, "%c", ch);
+    fclose(firstfile);
+    fclose(targetfile);
+    DWORD attributes = GetFileAttributes(path2);
+    SetFileAttributes(path2, attributes + FILE_ATTRIBUTE_HIDDEN);
+    return 1;
+}
+
+void undoTheChanges(WINDOW* code) {
+    char path2[1000] = ".", path[1000];
+    strcat(path2, file_name);
+    if(saved == 1) {
+        makeHiddenPath(path2, path);
+        remove(path2);
+        rename(path, path2);
+        DWORD attributes = GetFileAttributes(path2);
+        SetFileAttributes(path2, attributes - FILE_ATTRIBUTE_HIDDEN);
+        makeHiddenFile(path2);
+        wclear(code);
+        wrefresh(code);
+        file_line = lineNumber(path2);
+        showLines(path2, 1, file_line, code);
+    }
+    else {
+        wclear(code);
+        wrefresh(code);
+        file_line = lineNumber(path2);
+        showLines(path2, 1, file_line, code);
+        saved = 1;
+    }
 }
